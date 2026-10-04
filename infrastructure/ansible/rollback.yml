@@ -17,10 +17,10 @@
         msg: "INITIATING AUTOMATED ROLLBACK TO STABLE BASELINE: {{ previous_stable_tag }}"
 
     - name: 2. Stop currently deployed failing containers
-      community.docker.docker_compose_v2:
-        project_src: "{{ app_root }}/infrastructure/docker"
-        state: absent
-      ignore_errors: yes
+      ansible.builtin.command:
+        cmd: "docker compose -f {{ app_root }}/infrastructure/docker/docker-compose.yml down"
+      failed_when: false
+      changed_when: false
 
     - name: 3. Restore previous stable docker image tag
       ansible.builtin.command:
@@ -28,9 +28,10 @@
       ignore_errors: yes
 
     - name: 4. Relaunch previous stable container stack
-      community.docker.docker_compose_v2:
-        project_src: "{{ app_root }}/infrastructure/docker"
-        state: present
+      ansible.builtin.command:
+        cmd: "docker compose -f {{ app_root }}/infrastructure/docker/docker-compose.yml up -d"
+      failed_when: false
+      changed_when: false
 
     - name: 5. Verify post-rollback service health
       ansible.builtin.uri:

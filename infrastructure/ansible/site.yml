@@ -91,12 +91,12 @@
 
               location /health/ {
                   proxy_pass http://127.0.0.1:8000/health/;
-                  proxy_set_header Host $host;
+                  proxy_set_header Host localhost;
               }
 
               location / {
                   proxy_pass http://127.0.0.1:8000;
-                  proxy_set_header Host $host;
+                  proxy_set_header Host localhost;
                   proxy_set_header X-Real-IP $remote_addr;
               }
           }
@@ -109,6 +109,12 @@
         state: link
       notify: Reload Nginx
 
+    - name: 7b. Disable default Nginx configuration
+      ansible.builtin.file:
+        path: "/etc/nginx/sites-enabled/default"
+        state: absent
+      notify: Reload Nginx
+
     - name: 8. Ensure Nginx service is running and enabled
       ansible.builtin.service:
         name: nginx
@@ -116,11 +122,14 @@
         enabled: yes
 
     - name: 9. Launch container stack via Docker Compose
-      community.docker.docker_compose_v2:
-        project_src: "{{ app_root }}/infrastructure/docker"
-        state: present
-        pull: always
-      ignore_errors: yes
+      ansible.builtin.command:
+        cmd: "docker compose -f {{ app_root }}/infrastructure/docker/docker-compose.yml up -d"
+      register: compose_out
+      failed_when: false
+      changed_when: false
+
+    - name: 9b. Flush handlers to apply Nginx changes immediately
+      ansible.builtin.meta: flush_handlers
 
     - name: 10. Automated Health Check Verification
       ansible.builtin.uri:
