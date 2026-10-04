@@ -35,9 +35,8 @@ target/
 *.iml
 
 # Test Results & Reports
-reports/
-reports/*.html
-reports/*.xml
+/reports/
+
 test-output/
 selenium-tests/target/
 selenium-tests/test-output/

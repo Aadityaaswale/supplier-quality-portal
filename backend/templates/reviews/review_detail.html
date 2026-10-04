@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+
+{% block title %}Review {{ review.review_id }} - Audit Inspection{% endblock %}
+{% block breadcrumb %}<a href="{% url 'review-list' %}">Reviews</a> <i class="ph ph-caret-right" style="font-size: 12px;"></i> {{ review.review_id }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <h1 class="page-title">{{ review.review_id }}</h1>
+      <span class="badge-status {% if review.status == 'Approved' %}badge-status-approved{% elif review.status == 'Rejected' %}badge-status-rejected{% elif review.status == 'Draft' %}badge-status-draft{% else %}badge-status-pending{% endif %}">
+        {{ review.status }}
+      </span>
+    </div>
+    <p class="page-subtitle">
+      Supplier: <strong>{{ review.supplier.name }}</strong> ({{ review.supplier.code }}) &bull;
+      Reviewer: <strong>{{ review.reviewer.username }}</strong> &bull;
+      Audit Date: <strong>{{ review.review_date|date:"F d, Y" }}</strong>
+    </p>
+  </div>
+
+  <div style="display: flex; gap: 10px;">
+    {% if can_edit %}
+    <a href="{% url 'review-update' review.pk %}" class="btn-saas btn-secondary-saas" id="btn-edit-review">
+      <i class="ph ph-pencil-simple"></i> Edit Draft
+    </a>
+    {% endif %}
+
+    {% if can_submit %}
+    <form method="POST" action="{% url 'review-transition' review.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="submit">
+      <button type="submit" class="btn-saas btn-primary-saas" id="btn-submit-review">
+        <i class="ph ph-paper-plane-tilt"></i> Submit for Approval
+      </button>
+    </form>
+    {% endif %}
+
+    {% if can_evaluate %}
+    <button type="button" class="btn-saas btn-success-saas" onclick="openApprovalModal('approve')" id="btn-approve-review">
+      <i class="ph ph-check-circle"></i> Approve
+    </button>
+    <button type="button" class="btn-saas btn-danger-saas" onclick="openApprovalModal('reject')" id="btn-reject-review">
+      <i class="ph ph-x-circle"></i> Reject
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Score Metrics Breakdown Grid -->
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; margin-bottom: 28px;">
+  <!-- Overall Score Highlight -->
+  <div class="card-saas" style="text-align: center; display: flex; flex-direction: column; justify-content: center;">
+    <div style="font-size: 13px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">
+      Weighted Audit Score
+    </div>
+    <div style="font-size: 56px; font-weight: 800; color: #818cf8; font-family: var(--font-mono); margin: 12px 0;" id="review_overall_score_val">
+      {{ review.overall_score }}%
+    </div>
+    <div style="font-size: 13px; color: var(--text-subtle);">
+      Defect Penalty Applied: <strong>-{{ review.defect_count|floatformat:1 }} pts</strong> ({{ review.defect_count }} units)
+    </div>
+  </div>
+
+  <!-- Dimension Breakdown -->
+  <div class="card-saas">
+    <div class="card-header-clean">
+      <div class="card-title-clean">
+        <i class="ph ph-sliders" style="color: var(--primary);"></i>
+        Evaluation Dimension Breakdown
+      </div>
+      <span style="font-size: 12px; color: var(--text-subtle);">Quality 45% &bull; Compliance 30% &bull; Delivery 25%</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      <!-- Product Quality -->
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+          <span>Product Quality (45% weight)</span>
+          <strong style="color: #fff; font-family: var(--font-mono);">{{ review.product_quality_score }}%</strong>
+        </div>
+        <div style="height: 8px; background: var(--bg-elevated); border-radius: 99px; overflow: hidden;">
+          <div style="width: {{ review.product_quality_score }}%; height: 100%; background: #6366f1;"></div>
+        </div>
+      </div>
+
+      <!-- Compliance -->
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+          <span>Regulatory Compliance (30% weight)</span>
+          <strong style="color: #fff; font-family: var(--font-mono);">{{ review.compliance_score }}%</strong>
+        </div>
+        <div style="height: 8px; background: var(--bg-elevated); border-radius: 99px; overflow: hidden;">
+          <div style="width: {{ review.compliance_score }}%; height: 100%; background: #10b981;"></div>
+        </div>
+      </div>
+
+      <!-- Delivery -->
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+          <span>On-Time Delivery & SLA (25% weight)</span>
+          <strong style="color: #fff; font-family: var(--font-mono);">{{ review.delivery_score }}%</strong>
+        </div>
+        <div style="height: 8px; background: var(--bg-elevated); border-radius: 99px; overflow: hidden;">
+          <div style="width: {{ review.delivery_score }}%; height: 100%; background: #06b6d4;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Comments & Manager Remarks -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;">
+  <!-- Reviewer Notes -->
+  <div class="card-saas">
+    <div class="card-header-clean">
+      <div class="card-title-clean">
+        <i class="ph ph-chat-text" style="color: var(--primary);"></i>
+        Reviewer Audit Notes
+      </div>
+    </div>
+    <p style="font-size: 14px; color: var(--text-main); line-height: 1.6;">
+      {{ review.comments|default:"No auditor comments provided."|linebreaksbr }}
+    </p>
+  </div>
+
+  <!-- Manager Evaluation Remarks -->
+  <div class="card-saas">
+    <div class="card-header-clean">
+      <div class="card-title-clean">
+        <i class="ph ph-stamp" style="color: #fbbf24;"></i>
+        Quality Manager Determination
+      </div>
+      {% if review.reviewed_by_manager %}
+      <span style="font-size: 12px; color: var(--text-subtle);">By {{ review.reviewed_by_manager.username }}</span>
+      {% endif %}
+    </div>
+    <p style="font-size: 14px; color: var(--text-main); line-height: 1.6;">
+      {{ review.manager_remarks|default:"Pending final managerial determination."|linebreaksbr }}
+    </p>
+  </div>
+</div>
+
+<!-- Workflow Audit Trail History -->
+<div class="card-saas">
+  <div class="card-header-clean">
+    <div class="card-title-clean">
+      <i class="ph ph-git-commit" style="color: var(--primary);"></i>
+      Governance & Workflow Audit Trail
+    </div>
+  </div>
+
+  <div style="position: relative; padding-left: 24px; border-left: 2px solid var(--border-subtle); margin-left: 12px;">
+    {% for log in audit_logs %}
+    <div style="position: relative; margin-bottom: 24px;">
+      <div style="position: absolute; left: -31px; top: 0; width: 14px; height: 14px; border-radius: 99px; background: var(--primary); border: 2px solid var(--bg-card);"></div>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+        <strong style="color: #fff; font-size: 14px;">{{ log.get_action_display }}</strong>
+        <span style="font-size: 12px; color: var(--text-subtle);">{{ log.timestamp|date:"M d, Y H:i" }}</span>
+      </div>
+      <div style="font-size: 13px; color: var(--text-muted);">
+        Actor: <span style="color: #c7d2fe;">{{ log.actor.username|default:"System" }}</span>
+        {% if log.new_status %}&bull; Status: <span style="color: #fff;">{{ log.new_status }}</span>{% endif %}
+      </div>
+      {% if log.notes %}
+      <div style="font-size: 13px; color: var(--text-subtle); margin-top: 4px; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 6px;">
+        {{ log.notes }}
+      </div>
+      {% endif %}
+    </div>
+    {% empty %}
+    <div style="color: var(--text-subtle); font-size: 13px;">No historical audit events logged.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Manager Decision Modal -->
+<div id="decisionModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 100; align-items: center; justify-content: center;">
+  <div class="card-saas" style="width: 100%; max-width: 500px; margin: 20px;">
+    <h2 id="modalTitle" style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 12px;">Review Decision</h2>
+    <form method="POST" action="{% url 'review-transition' review.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" id="modalAction" value="">
+
+      <div class="form-group-saas">
+        <label class="form-label-saas" for="remarks">Manager Remarks / Audit Findings *</label>
+        <textarea name="remarks" id="remarks" rows="4" class="form-control-saas" required placeholder="Provide clear audit feedback or remediation instructions..."></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button type="button" class="btn-saas btn-secondary-saas" onclick="closeModal()">Cancel</button>
+        <button type="submit" id="btn-confirm-decision" class="btn-saas btn-primary-saas">Confirm Decision</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openApprovalModal(action) {
+  const modal = document.getElementById('decisionModal');
+  const actionInput = document.getElementById('modalAction');
+  const title = document.getElementById('modalTitle');
+  const confirmBtn = document.getElementById('btn-confirm-decision');
+
+  actionInput.value = action;
+  if (action === 'approve') {
+    title.textContent = 'Approve Quality Review';
+    confirmBtn.className = 'btn-saas btn-success-saas';
+    confirmBtn.textContent = 'Certify & Approve';
+  } else {
+    title.textContent = 'Reject Quality Review';
+    confirmBtn.className = 'btn-saas btn-danger-saas';
+    confirmBtn.textContent = 'Confirm Rejection';
+  }
+  modal.style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('decisionModal').style.display = 'none';
+}
+</script>
+{% endblock %}

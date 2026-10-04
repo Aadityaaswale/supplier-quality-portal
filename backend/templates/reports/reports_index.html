@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Analytics & Compliance Reports{% endblock %}
+{% block breadcrumb %}Analytics & Reports{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Analytics & Quality Compliance Reports</h1>
+    <p class="page-subtitle">Exportable supplier performance matrices and defect Pareto diagnostics</p>
+  </div>
+  <div style="display: flex; gap: 10px;">
+    <a href="{% url 'export-suppliers-csv' %}" class="btn-saas btn-secondary-saas" id="btn-export-suppliers">
+      <i class="ph ph-file-csv"></i> Export Suppliers CSV
+    </a>
+    <a href="{% url 'export-reviews-csv' %}" class="btn-saas btn-primary-saas" id="btn-export-reviews">
+      <i class="ph ph-file-csv"></i> Export Reviews CSV
+    </a>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+  <!-- Category Benchmark Matrix -->
+  <div class="card-saas">
+    <div class="card-header-clean">
+      <div class="card-title-clean">
+        <i class="ph ph-chart-donut" style="color: var(--primary);"></i>
+        Manufacturing Category Benchmarks
+      </div>
+    </div>
+    <div class="table-responsive-saas">
+      <table class="table-saas">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Onboarded Suppliers</th>
+            <th>Average Quality</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cat in category_summary %}
+          <tr>
+            <td style="font-weight: 700; color: #fff;">{{ cat.category }}</td>
+            <td>{{ cat.supplier_count }} suppliers</td>
+            <td>
+              <span style="font-family: var(--font-mono); font-weight: 800; color: #34d399;">
+                {{ cat.avg_score|floatformat:1 }}%
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Defect Density Diagnostics -->
+  <div class="card-saas">
+    <div class="card-header-clean">
+      <div class="card-title-clean">
+        <i class="ph ph-bug" style="color: var(--danger);"></i>
+        Defect Concentration by Supplier
+      </div>
+    </div>
+    <div class="table-responsive-saas">
+      <table class="table-saas">
+        <thead>
+          <tr>
+            <th>Supplier</th>
+            <th>Total Defects</th>
+            <th>Audits Completed</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in defect_summary %}
+          <tr>
+            <td>
+              <strong style="color: #fff;">{{ d.supplier__name }}</strong>
+              <div style="font-size: 11px; color: var(--text-subtle);">{{ d.supplier__code }}</div>
+            </td>
+            <td>
+              <span style="font-family: var(--font-mono); font-weight: 800; color: #f87171;">
+                {{ d.total_defects }} units
+              </span>
+            </td>
+            <td>{{ d.review_count }} audits</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 24px;">No defect data registered yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

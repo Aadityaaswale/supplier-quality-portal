@@ -1,0 +1,339 @@
+{% extends 'base.html' %}
+
+{% block title %}Executive Quality Dashboard{% endblock %}
+{% block breadcrumb %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Executive Quality Dashboard</h1>
+    <p class="page-subtitle">Real-time metrics, supplier benchmarks, and pending quality reviews</p>
+  </div>
+  <div style="display: flex; gap: 10px;">
+    {% if IS_QUALITY_MANAGER %}
+    <a href="{% url 'supplier-create' %}" class="btn-saas btn-secondary-saas" id="btn-quick-supplier">
+      <i class="ph ph-plus"></i> Add Supplier
+    </a>
+    {% endif %}
+    <a href="{% url 'review-create' %}" class="btn-saas btn-primary-saas" id="btn-quick-review">
+      <i class="ph ph-clipboard-plus"></i> New Quality Review
+    </a>
+  </div>
+</div>
+
+<!-- KPI Ribbon Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card kpi-cyan">
+    <div class="kpi-label">
+      <span>Total Suppliers</span>
+      <i class="ph ph-buildings"></i>
+    </div>
+    <div class="kpi-value">{{ total_suppliers }}</div>
+    <div class="kpi-subtext">{{ active_suppliers }} currently active</div>
+  </div>
+
+  <div class="kpi-card kpi-emerald">
+    <div class="kpi-label">
+      <span>Avg Quality Score</span>
+      <i class="ph ph-trend-up"></i>
+    </div>
+    <div class="kpi-value">{{ avg_quality_score }}%</div>
+    <div class="kpi-subtext">Across active suppliers</div>
+  </div>
+
+  <div class="kpi-card kpi-amber">
+    <div class="kpi-label">
+      <span>Pending Reviews</span>
+      <i class="ph ph-hourglass-high"></i>
+    </div>
+    <div class="kpi-value">{{ pending_reviews_count }}</div>
+    <div class="kpi-subtext">Awaiting manager audit</div>
+  </div>
+
+  <div class="kpi-card kpi-emerald">
+    <div class="kpi-label">
+      <span>Approved Audits</span>
+      <i class="ph ph-check-circle"></i>
+    </div>
+    <div class="kpi-value">{{ approved_reviews_count }}</div>
+    <div class="kpi-subtext">Certified production quality</div>
+  </div>
+
+  <div class="kpi-card kpi-rose">
+    <div class="kpi-label">
+      <span>Rejected Audits</span>
+      <i class="ph ph-x-circle"></i>
+    </div>
+    <div class="kpi-value">{{ rejected_reviews_count }}</div>
+    <div class="kpi-subtext">Flagged for remediation</div>
+  </div>
+</div>
+
+<!-- Charts Row 1: Status Doughnut & Category Bar Chart -->
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; margin-bottom: 28px;">
+  <!-- Doughnut Chart: Status Breakdown -->
+  <div class="card-saas">
+    <div class="card-header-clean">
+      <div class="card-title-clean">
+        <i class="ph ph-chart-pie-slice" style="color: var(--primary);"></i>
+        Review Status Distribution
+      </div>
+    </div>
+    <div style="height: 240px; position: relative;">
+      <canvas id="statusDoughnutChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Bar Chart: Category Quality Scores -->
+  <div class="card-saas">
+    <div class="card-header-clean">
+      <div class="card-title-clean">
+        <i class="ph ph-chart-bar" style="color: var(--info);"></i>
+        Average Quality Score by Category
+      </div>
+    </div>
+    <div style="height: 240px; position: relative;">
+      <canvas id="categoryBarChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Pending Approvals & Quick Quality Actions -->
+{% if pending_approvals %}
+<div class="card-saas" style="margin-bottom: 28px; border-color: rgba(245, 158, 11, 0.3);">
+  <div class="card-header-clean">
+    <div class="card-title-clean" style="color: #fbbf24;">
+      <i class="ph ph-bell-ringing"></i>
+      Pending Quality Approvals Queue (Action Required)
+    </div>
+    <span style="font-size: 12px; color: var(--text-muted);">{{ pending_approvals|length }} pending review(s)</span>
+  </div>
+
+  <div class="table-responsive-saas">
+    <table class="table-saas">
+      <thead>
+        <tr>
+          <th>Review ID</th>
+          <th>Supplier</th>
+          <th>Reviewer</th>
+          <th>Quality Score</th>
+          <th>Defects</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in pending_approvals %}
+        <tr>
+          <td>
+            <a href="{% url 'review-detail' r.pk %}" style="font-weight: 700; color: #818cf8; text-decoration: none;">
+              {{ r.review_id }}
+            </a>
+          </td>
+          <td>{{ r.supplier.name }}</td>
+          <td>{{ r.reviewer.username }}</td>
+          <td>
+            <span style="font-weight: 800; font-family: var(--font-mono); color: #fff;">{{ r.overall_score }}%</span>
+          </td>
+          <td>{{ r.defect_count }} units</td>
+          <td>
+            <span class="badge-status badge-status-pending">
+              <i class="ph ph-hourglass-simple"></i> {{ r.status }}
+            </span>
+          </td>
+          <td>
+            <a href="{% url 'review-detail' r.pk %}" class="btn-saas btn-primary-saas btn-sm-saas">
+              Evaluate <i class="ph ph-arrow-right"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Bottom Row: Top Suppliers & Recent Reviews -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+  <!-- Top Performing Suppliers -->
+  <div class="card-saas">
+    <div class="card-header-clean">
+      <div class="card-title-clean">
+        <i class="ph ph-medal" style="color: #fbbf24;"></i>
+        Top Supplier Quality Leaderboard
+      </div>
+      <a href="{% url 'supplier-list' %}" style="font-size: 13px; color: var(--primary); text-decoration: none;">View All</a>
+    </div>
+
+    <div class="table-responsive-saas">
+      <table class="table-saas">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Supplier</th>
+            <th>Category</th>
+            <th>Grade</th>
+            <th>Quality Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in top_suppliers %}
+          <tr>
+            <td style="font-weight: 800; color: var(--text-subtle);">#{{ forloop.counter }}</td>
+            <td>
+              <a href="{% url 'supplier-detail' s.pk %}" style="color: #fff; font-weight: 600; text-decoration: none;">
+                {{ s.name }}
+              </a>
+              <div style="font-size: 11px; color: var(--text-subtle);">{{ s.code }}</div>
+            </td>
+            <td>{{ s.category }}</td>
+            <td>
+              <span class="grade-pill grade-{{ s.grade|slugify }}">{{ s.grade }}</span>
+            </td>
+            <td>
+              <span style="font-weight: 800; color: #34d399; font-family: var(--font-mono);">{{ s.overall_quality_score }}%</span>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">No approved supplier records yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Recent Review Submissions -->
+  <div class="card-saas">
+    <div class="card-header-clean">
+      <div class="card-title-clean">
+        <i class="ph ph-clock-counter-clockwise" style="color: var(--primary);"></i>
+        Recent Review Submissions
+      </div>
+      <a href="{% url 'review-list' %}" style="font-size: 13px; color: var(--primary); text-decoration: none;">View All</a>
+    </div>
+
+    <div class="table-responsive-saas">
+      <table class="table-saas">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Supplier</th>
+            <th>Score</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in recent_reviews %}
+          <tr>
+            <td>
+              <a href="{% url 'review-detail' r.pk %}" style="font-weight: 700; color: #818cf8; text-decoration: none;">
+                {{ r.review_id }}
+              </a>
+            </td>
+            <td>{{ r.supplier.name }}</td>
+            <td>
+              <span style="font-weight: 800; color: #fff; font-family: var(--font-mono);">{{ r.overall_score }}%</span>
+            </td>
+            <td>
+              <span class="badge-status {% if r.status == 'Approved' %}badge-status-approved{% elif r.status == 'Rejected' %}badge-status-rejected{% elif r.status == 'Draft' %}badge-status-draft{% else %}badge-status-pending{% endif %}">
+                {{ r.status }}
+              </span>
+            </td>
+            <td style="font-size: 12px; color: var(--text-muted);">{{ r.created_at|date:"M d" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">No reviews recorded.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const statusData = JSON.parse('{{ status_distribution_json|escapejs }}');
+  const catLabels = JSON.parse('{{ category_labels_json|escapejs }}');
+  const catScores = JSON.parse('{{ category_data_json|escapejs }}');
+
+  // Chart 1: Status Doughnut
+  const ctxStatus = document.getElementById('statusDoughnutChart');
+  if (ctxStatus) {
+    new Chart(ctxStatus, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(statusData),
+        datasets: [{
+          data: Object.values(statusData),
+          backgroundColor: [
+            '#94a3b8', // Draft
+            '#f59e0b', // Pending Review
+            '#06b6d4', // Under Review
+            '#10b981', // Approved
+            '#ef4444'  // Rejected
+          ],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans', size: 11 } }
+          }
+        },
+        cutout: '70%'
+      }
+    });
+  }
+
+  // Chart 2: Category Bar
+  const ctxCat = document.getElementById('categoryBarChart');
+  if (ctxCat) {
+    new Chart(ctxCat, {
+      type: 'bar',
+      data: {
+        labels: catLabels,
+        datasets: [{
+          label: 'Avg Quality Score (%)',
+          data: catScores,
+          backgroundColor: 'rgba(99, 102, 241, 0.7)',
+          hoverBackgroundColor: 'rgba(99, 102, 241, 1)',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            min: 0,
+            max: 100,
+            ticks: { color: '#64748b' },
+            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+          },
+          x: {
+            ticks: { color: '#94a3b8' },
+            grid: { display: false }
+          }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}
