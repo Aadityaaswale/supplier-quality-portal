@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Supplier Quality Review Portal{% endblock %} | Enterprise Quality Management</title>
+  <meta name="description" content="Puppet-Provisioned Supplier Quality Review Portal - Academic Project by Aaditya Aswale (23102B0044)">
+
+  <!-- Google Fonts & Phosphor Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Custom Design System -->
+  <link rel="stylesheet" href="/static/css/main.css">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  {% if user.is_authenticated %}
+  <div class="app-shell">
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar">
+      <div class="sidebar-header">
+        <div class="brand-icon">
+          <i class="ph ph-shield-check"></i>
+        </div>
+        <div class="brand-text">
+          <h1>Supplier Quality</h1>
+          <span>Enterprise Portal</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Core Modules</div>
+        <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'dashboard-direct' %}active{% endif %}" id="nav-dashboard">
+          <i class="ph ph-squares-four"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="{% url 'supplier-list' %}" class="nav-link {% if 'supplier' in request.resolver_match.url_name %}active{% endif %}" id="nav-suppliers">
+          <i class="ph ph-buildings"></i>
+          <span>Suppliers</span>
+        </a>
+        <a href="{% url 'review-list' %}" class="nav-link {% if 'review' in request.resolver_match.url_name %}active{% endif %}" id="nav-reviews">
+          <i class="ph ph-clipboard-text"></i>
+          <span>Quality Reviews</span>
+        </a>
+        <a href="{% url 'reports-index' %}" class="nav-link {% if 'reports' in request.resolver_match.url_name %}active{% endif %}" id="nav-reports">
+          <i class="ph ph-chart-line-up"></i>
+          <span>Analytics & Reports</span>
+        </a>
+
+        {% if IS_ADMIN %}
+        <div class="nav-section-title">Administration</div>
+        <a href="{% url 'user-management' %}" class="nav-link {% if 'user-management' in request.resolver_match.url_name %}active{% endif %}" id="nav-users">
+          <i class="ph ph-users-three"></i>
+          <span>User Management</span>
+        </a>
+        {% endif %}
+
+        <div class="nav-section-title">System & DevOps</div>
+        <a href="/health/" target="_blank" class="nav-link" id="nav-health">
+          <i class="ph ph-activity"></i>
+          <span>Health Probe</span>
+          <span style="font-size: 9px; background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 2px 6px; border-radius: 99px; margin-left: auto;">200 OK</span>
+        </a>
+        <a href="/api/suppliers/" target="_blank" class="nav-link" id="nav-api">
+          <i class="ph ph-code"></i>
+          <span>REST API</span>
+        </a>
+      </nav>
+
+      <!-- Sidebar User Profile Card -->
+      <div class="sidebar-user">
+        <div class="user-card">
+          <div class="user-avatar">
+            {{ user.username|slice:":1"|upper }}
+          </div>
+          <div class="user-info">
+            <div class="user-name">{{ user.first_name|default:user.username }}</div>
+            <span class="user-badge {% if CURRENT_USER_ROLE == 'ADMIN' %}badge-admin{% elif CURRENT_USER_ROLE == 'QUALITY_MANAGER' %}badge-manager{% else %}badge-reviewer{% endif %}">
+              {{ CURRENT_USER_ROLE|default:"USER" }}
+            </span>
+          </div>
+          <a href="{% url 'logout' %}" title="Sign Out" style="color: var(--text-muted); font-size: 18px;" id="btn-logout">
+            <i class="ph ph-sign-out"></i>
+          </a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Shell -->
+    <div class="app-main">
+      <!-- Top Header Bar -->
+      <header class="app-topbar">
+        <div class="topbar-breadcrumbs">
+          <a href="{% url 'dashboard' %}">Portal</a>
+          <i class="ph ph-caret-right" style="font-size: 12px;"></i>
+          <span class="current">{% block breadcrumb %}Overview{% endblock %}</span>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="student-tag">
+            <i class="ph ph-student"></i> {{ STUDENT_NAME }} &bull; {{ STUDENT_ID }}
+          </div>
+          <a href="{% url 'profile' %}" class="btn-saas btn-secondary-saas btn-sm-saas" id="btn-user-profile">
+            <i class="ph ph-user"></i> My Profile
+          </a>
+        </div>
+      </header>
+
+      <!-- App Content Area -->
+      <main class="app-content">
+        <!-- Notification Messages -->
+        {% if messages %}
+        <div class="messages-container">
+          {% for message in messages %}
+          <div class="alert-saas {% if message.tags == 'error' %}alert-error-saas{% elif message.tags == 'success' %}alert-success-saas{% else %}alert-info-saas{% endif %}">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <i class="ph {% if message.tags == 'error' %}ph-warning-circle{% elif message.tags == 'success' %}ph-check-circle{% else %}ph-info{% endif %}" style="font-size: 18px;"></i>
+              <span>{{ message }}</span>
+            </div>
+            <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:inherit; cursor:pointer; font-size: 16px;">
+              <i class="ph ph-x"></i>
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+  {% else %}
+  <!-- Anonymous / Login Container -->
+  <main>
+    {% block auth_content %}{% endblock %}
+  </main>
+  {% endif %}
+
+  <!-- Core Javascript -->
+  <script src="/static/js/main.js"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

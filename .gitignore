@@ -36,8 +36,8 @@ target/
 
 # Test Results & Reports
 reports/
-*.xml
-*.html
+reports/*.html
+reports/*.xml
 test-output/
 selenium-tests/target/
 selenium-tests/test-output/

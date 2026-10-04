@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if is_edit %}Edit Supplier - {{ supplier.name }}{% else %}Onboard New Supplier{% endif %}{% endblock %}
+{% block breadcrumb %}<a href="{% url 'supplier-list' %}">Suppliers</a> <i class="ph ph-caret-right" style="font-size: 12px;"></i> {% if is_edit %}Edit{% else %}New{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{% if is_edit %}Edit Supplier Profile{% else %}Onboard New Supplier{% endif %}</h1>
+    <p class="page-subtitle">Configure manufacturing credentials, contact details, and initial status</p>
+  </div>
+</div>
+
+<div class="card-saas" style="max-width: 800px; margin: 0 auto;">
+  <form method="POST">
+    {% csrf_token %}
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <!-- Supplier ID -->
+      <div class="form-group-saas">
+        <label class="form-label-saas" for="supplier_id">Supplier ID *</label>
+        <input type="text" name="supplier_id" id="supplier_id" class="form-control-saas" required
+               value="{{ supplier.supplier_id|default:'' }}" {% if is_edit %}readonly style="opacity: 0.7;"{% endif %}
+               placeholder="e.g., SUP-2026-006">
+      </div>
+
+      <!-- Supplier Code -->
+      <div class="form-group-saas">
+        <label class="form-label-saas" for="code">Unique Code *</label>
+        <input type="text" name="code" id="code" class="form-control-saas" required
+               value="{{ supplier.code|default:'' }}" {% if is_edit %}readonly style="opacity: 0.7;"{% endif %}
+               placeholder="e.g., APEX-IND">
+      </div>
+
+      <!-- Supplier Name -->
+      <div class="form-group-saas" style="grid-column: span 2;">
+        <label class="form-label-saas" for="name">Company / Organization Name *</label>
+        <input type="text" name="name" id="name" class="form-control-saas" required
+               value="{{ supplier.name|default:'' }}" placeholder="e.g., Apex Components International">
+      </div>
+
+      <!-- Category -->
+      <div class="form-group-saas">
+        <label class="form-label-saas" for="category">Category *</label>
+        <select name="category" id="category" class="form-control-saas" required>
+          {% for cat, label in categories %}
+          <option value="{{ cat }}" {% if supplier.category == cat %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Status -->
+      <div class="form-group-saas">
+        <label class="form-label-saas" for="status">Operational Status *</label>
+        <select name="status" id="status" class="form-control-saas" required>
+          {% for st, label in statuses %}
+          <option value="{{ st }}" {% if supplier.status == st %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Contact Person -->
+      <div class="form-group-saas">
+        <label class="form-label-saas" for="contact_person">Primary Contact Person *</label>
+        <input type="text" name="contact_person" id="contact_person" class="form-control-saas" required
+               value="{{ supplier.contact_person|default:'' }}" placeholder="e.g., Jane Doe">
+      </div>
+
+      <!-- Email -->
+      <div class="form-group-saas">
+        <label class="form-label-saas" for="email">Email Address *</label>
+        <input type="email" name="email" id="email" class="form-control-saas" required
+               value="{{ supplier.email|default:'' }}" placeholder="e.g., contact@supplier.com">
+      </div>
+
+      <!-- Phone -->
+      <div class="form-group-saas">
+        <label class="form-label-saas" for="phone">Phone Number *</label>
+        <input type="text" name="phone" id="phone" class="form-control-saas" required
+               value="{{ supplier.phone|default:'' }}" placeholder="e.g., +1-555-0199">
+      </div>
+
+      <!-- Facility Address -->
+      <div class="form-group-saas" style="grid-column: span 2;">
+        <label class="form-label-saas" for="address">Manufacturing Facility Address</label>
+        <textarea name="address" id="address" rows="3" class="form-control-saas" placeholder="Enter physical plant or shipping facility address...">{{ supplier.address|default:'' }}</textarea>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-subtle);">
+      <a href="{% if is_edit %}{% url 'supplier-detail' supplier.pk %}{% else %}{% url 'supplier-list' %}{% endif %}" class="btn-saas btn-secondary-saas">
+        Cancel
+      </a>
+      <button type="submit" id="btn-save-supplier" class="btn-saas btn-primary-saas">
+        <i class="ph ph-floppy-disk"></i> {% if is_edit %}Save Changes{% else %}Create Supplier{% endif %}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

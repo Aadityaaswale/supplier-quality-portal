@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}My Profile{% endblock %}
+{% block breadcrumb %}My Profile{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">User Profile</h1>
+    <p class="page-subtitle">Account security, assigned role, and activity details</p>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+  <!-- Identity Card -->
+  <div class="card-saas" style="text-align: center;">
+    <div style="width: 80px; height: 80px; border-radius: var(--radius-full); background: linear-gradient(135deg, #6366f1, #3b82f6); margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; color: #fff; box-shadow: 0 0 20px var(--primary-glow);">
+      {{ user.username|slice:":1"|upper }}
+    </div>
+    <h2 style="font-size: 20px; font-weight: 700; color: #fff;">{{ user.get_full_name|default:user.username }}</h2>
+    <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">{{ user.email|default:"No email configured" }}</p>
+
+    <div style="margin-top: 16px;">
+      <span class="user-badge {% if CURRENT_USER_ROLE == 'ADMIN' %}badge-admin{% elif CURRENT_USER_ROLE == 'QUALITY_MANAGER' %}badge-manager{% else %}badge-reviewer{% endif %}" style="font-size: 12px; padding: 4px 12px;">
+        Role: {{ profile.get_role_display }}
+      </span>
+    </div>
+
+    <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-subtle); text-align: left; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
+      <div><strong>Department:</strong> {{ profile.department }}</div>
+      <div><strong>Date Joined:</strong> {{ user.date_joined|date:"M d, Y" }}</div>
+      <div><strong>Status:</strong> <span style="color: #34d399;">Active Account</span></div>
+    </div>
+  </div>
+
+  <!-- Stats & Audit Summary -->
+  <div class="card-saas">
+    <div class="card-header-clean">
+      <div class="card-title-clean">
+        <i class="ph ph-chart-bar" style="color: var(--primary);"></i>
+        Audit & Review Contribution
+      </div>
+    </div>
+
+    <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 24px;">
+      <div class="kpi-card kpi-cyan">
+        <div class="kpi-label">Reviews Authored</div>
+        <div class="kpi-value">{{ my_reviews_count }}</div>
+        <div class="kpi-subtext">Total quality audit submissions</div>
+      </div>
+      <div class="kpi-card kpi-emerald">
+        <div class="kpi-label">Approved Reviews</div>
+        <div class="kpi-value">{{ approved_count }}</div>
+        <div class="kpi-subtext">Passed manager quality audit</div>
+      </div>
+    </div>
+
+    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 18px;">
+      <h3 style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 8px;">Role Capabilities (RBAC)</h3>
+      <p style="font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+        {% if CURRENT_USER_ROLE == 'ADMIN' %}
+          <strong>Administrator Privilege:</strong> Full access to manage system users, modify all supplier profiles, oversee all reviews, and access global audit logs.
+        {% elif CURRENT_USER_ROLE == 'QUALITY_MANAGER' %}
+          <strong>Quality Manager Privilege:</strong> Authority to review incoming supplier audit submissions, execute formal Approve/Reject decisions with remarks, onboard suppliers, and analyze quality reports.
+        {% else %}
+          <strong>Reviewer Privilege:</strong> Authorized to create new supplier quality reviews, calculate score metrics, edit drafts, and submit finalized reviews for management approval.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

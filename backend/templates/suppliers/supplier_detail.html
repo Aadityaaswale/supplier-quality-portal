@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ supplier.name }} - Supplier 360° Profile{% endblock %}
+{% block breadcrumb %}<a href="{% url 'supplier-list' %}">Suppliers</a> <i class="ph ph-caret-right" style="font-size: 12px;"></i> {{ supplier.code }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <h1 class="page-title">{{ supplier.name }}</h1>
+      <span class="badge-status {% if supplier.status == 'Active' %}badge-status-active{% elif supplier.status == 'Under Review' %}badge-status-under-review{% else %}badge-status-rejected{% endif %}">
+        {{ supplier.status }}
+      </span>
+    </div>
+    <p class="page-subtitle">Supplier Code: <strong>{{ supplier.code }}</strong> &bull; ID: <strong>{{ supplier.supplier_id }}</strong> &bull; Category: <strong>{{ supplier.category }}</strong></p>
+  </div>
+  <div style="display: flex; gap: 10px;">
+    {% if IS_QUALITY_MANAGER %}
+    <a href="{% url 'supplier-update' supplier.pk %}" class="btn-saas btn-secondary-saas" id="btn-edit-supplier">
+      <i class="ph ph-pencil-simple"></i> Edit Info
+    </a>
+    {% endif %}
+    <a href="{% url 'review-create' %}?supplier={{ supplier.pk }}" class="btn-saas btn-primary-saas" id="btn-conduct-review">
+      <i class="ph ph-clipboard-plus"></i> Audit Review
+    </a>
+    {% if IS_ADMIN %}
+    <a href="{% url 'supplier-delete' supplier.pk %}" class="btn-saas btn-danger-saas btn-sm-saas" style="padding: 9px 14px;" id="btn-delete-supplier">
+      <i class="ph ph-trash"></i>
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Score & Profile Cards -->
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; margin-bottom: 28px;">
+  <!-- Quality Score Gauge Card -->
+  <div class="card-saas" style="text-align: center; display: flex; flex-direction: column; justify-content: center;">
+    <div style="font-size: 13px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">
+      Cumulative Quality Score
+    </div>
+    <div style="font-size: 56px; font-weight: 800; color: #34d399; font-family: var(--font-mono); margin: 12px 0;">
+      {{ supplier.overall_quality_score }}%
+    </div>
+    <div>
+      <span class="grade-pill grade-{{ supplier.grade|slugify }}" style="width: 44px; height: 44px; font-size: 18px;">
+        {{ supplier.grade }}
+      </span>
+      <div style="font-size: 12px; color: var(--text-subtle); margin-top: 8px;">
+        Grade based on {{ approved_count }} approved review(s)
+      </div>
+    </div>
+  </div>
+
+  <!-- Contact & Operational Profile -->
+  <div class="card-saas">
+    <div class="card-header-clean">
+      <div class="card-title-clean">
+        <i class="ph ph-address-book" style="color: var(--primary);"></i>
+        Primary Contact & Facility Logistics
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 13px;">
+      <div>
+        <span style="color: var(--text-subtle); display: block;">Primary Contact:</span>
+        <strong style="color: #fff;">{{ supplier.contact_person }}</strong>
+      </div>
+      <div>
+        <span style="color: var(--text-subtle); display: block;">Email:</span>
+        <a href="mailto:{{ supplier.email }}" style="color: #818cf8;">{{ supplier.email }}</a>
+      </div>
+      <div>
+        <span style="color: var(--text-subtle); display: block;">Phone:</span>
+        <strong style="color: #fff;">{{ supplier.phone }}</strong>
+      </div>
+      <div>
+        <span style="color: var(--text-subtle); display: block;">Manufacturing Category:</span>
+        <strong style="color: #fff;">{{ supplier.category }}</strong>
+      </div>
+      <div style="grid-column: span 2;">
+        <span style="color: var(--text-subtle); display: block;">Facility Address:</span>
+        <span style="color: var(--text-main);">{{ supplier.address|default:"No address registered." }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Historical Quality Trend Chart -->
+<div class="card-saas" style="margin-bottom: 28px;">
+  <div class="card-header-clean">
+    <div class="card-title-clean">
+      <i class="ph ph-chart-line" style="color: var(--primary);"></i>
+      Historical Quality Score Progression
+    </div>
+  </div>
+  <div style="height: 220px; position: relative;">
+    <canvas id="supplierTrendChart"></canvas>
+  </div>
+</div>
+
+<!-- Past Quality Audit Reviews Table -->
+<div class="card-saas">
+  <div class="card-header-clean">
+    <div class="card-title-clean">
+      <i class="ph ph-clipboard-text" style="color: var(--primary);"></i>
+      Quality Audit Reviews Record ({{ reviews.count }})
+    </div>
+    <a href="{% url 'review-create' %}?supplier={{ supplier.pk }}" class="btn-saas btn-secondary-saas btn-sm-saas">
+      <i class="ph ph-plus"></i> Conduct New Audit
+    </a>
+  </div>
+
+  <div class="table-responsive-saas">
+    <table class="table-saas">
+      <thead>
+        <tr>
+          <th>Review ID</th>
+          <th>Date</th>
+          <th>Reviewer</th>
+          <th>Overall Score</th>
+          <th>Defects</th>
+          <th>Status</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reviews %}
+        <tr>
+          <td>
+            <a href="{% url 'review-detail' r.pk %}" style="font-family: var(--font-mono); font-weight: 700; color: #818cf8; text-decoration: none;">
+              {{ r.review_id }}
+            </a>
+          </td>
+          <td>{{ r.review_date|date:"M d, Y" }}</td>
+          <td>{{ r.reviewer.username }}</td>
+          <td>
+            <span style="font-weight: 800; font-family: var(--font-mono); color: #fff;">{{ r.overall_score }}%</span>
+          </td>
+          <td>{{ r.defect_count }} units</td>
+          <td>
+            <span class="badge-status {% if r.status == 'Approved' %}badge-status-approved{% elif r.status == 'Rejected' %}badge-status-rejected{% elif r.status == 'Draft' %}badge-status-draft{% else %}badge-status-pending{% endif %}">
+              {{ r.status }}
+            </span>
+          </td>
+          <td style="text-align: right;">
+            <a href="{% url 'review-detail' r.pk %}" class="btn-saas btn-secondary-saas btn-sm-saas">
+              View Audit <i class="ph ph-arrow-right"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px;">
+            No quality reviews recorded for this supplier yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const dates = JSON.parse('{{ trend_dates_json|escapejs }}');
+  const scores = JSON.parse('{{ trend_scores_json|escapejs }}');
+
+  const ctx = document.getElementById('supplierTrendChart');
+  if (ctx) {
+    if (dates.length > 0) {
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: 'Approved Quality Score (%)',
+            data: scores,
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointBackgroundColor: '#818cf8',
+            pointRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { min: 0, max: 100, ticks: { color: '#64748b' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+            x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    } else {
+      ctx.parentElement.innerHTML = '<div style="text-align: center; color: var(--text-subtle); padding: 48px;">No approved review trend data available yet.</div>';
+    }
+  }
+});
+</script>
+{% endblock %}
