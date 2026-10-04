@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+{% block title %}Quality Reviews Registry{% endblock %}
+{% block breadcrumb %}Quality Reviews{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Quality Reviews Registry</h1>
+    <p class="page-subtitle">Track, evaluate, and audit supplier manufacturing lots and compliance scores</p>
+  </div>
+  <a href="{% url 'review-create' %}" class="btn-saas btn-primary-saas" id="btn-add-review">
+    <i class="ph ph-clipboard-plus"></i> New Quality Review
+  </a>
+</div>
+
+<!-- Navigation Tabs -->
+<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px; overflow-x: auto;">
+  <a href="?tab=all" class="page-btn {% if current_tab == 'all' %}active{% endif %}">
+    All Reviews <span style="opacity: 0.7; font-size: 11px;">({{ counts.all }})</span>
+  </a>
+  <a href="?tab=pending" class="page-btn {% if current_tab == 'pending' %}active{% endif %}">
+    <i class="ph ph-hourglass-simple"></i> Pending Approval <span style="opacity: 0.7; font-size: 11px;">({{ counts.pending }})</span>
+  </a>
+  <a href="?tab=my" class="page-btn {% if current_tab == 'my' %}active{% endif %}">
+    My Reviews <span style="opacity: 0.7; font-size: 11px;">({{ counts.my }})</span>
+  </a>
+  <a href="?tab=approved" class="page-btn {% if current_tab == 'approved' %}active{% endif %}">
+    Approved <span style="opacity: 0.7; font-size: 11px;">({{ counts.approved }})</span>
+  </a>
+  <a href="?tab=rejected" class="page-btn {% if current_tab == 'rejected' %}active{% endif %}">
+    Rejected <span style="opacity: 0.7; font-size: 11px;">({{ counts.rejected }})</span>
+  </a>
+</div>
+
+<!-- Search & Filtering -->
+<div class="card-saas" style="margin-bottom: 24px; padding: 18px 24px;">
+  <form method="GET" action="{% url 'review-list' %}" style="display: flex; gap: 14px; flex-wrap: wrap;">
+    <input type="hidden" name="tab" value="{{ current_tab }}">
+    <div style="flex-grow: 1; min-width: 240px; position: relative;">
+      <i class="ph ph-magnifying-glass" style="position: absolute; left: 14px; top: 12px; color: var(--text-muted); font-size: 16px;"></i>
+      <input type="text" name="q" value="{{ query }}" placeholder="Search by Review ID, supplier, or reviewer..." class="form-control-saas" style="padding-left: 40px;" id="input-search-review">
+    </div>
+
+    {% if current_tab == 'all' %}
+    <div style="min-width: 160px;">
+      <select name="status" class="form-control-saas">
+        <option value="">All Statuses</option>
+        {% for st in statuses %}
+        <option value="{{ st }}" {% if selected_status == st %}selected{% endif %}>{{ st }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    <button type="submit" class="btn-saas btn-secondary-saas" id="btn-filter-review">
+      <i class="ph ph-funnel"></i> Search
+    </button>
+  </form>
+</div>
+
+<!-- Reviews Table -->
+<div class="card-saas">
+  <div class="table-responsive-saas">
+    <table class="table-saas" id="reviews-table">
+      <thead>
+        <tr>
+          <th>Review ID</th>
+          <th>Supplier</th>
+          <th>Reviewer</th>
+          <th>Audit Date</th>
+          <th>Defect Count</th>
+          <th>Overall Score</th>
+          <th>Status</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for review in page_obj %}
+        <tr>
+          <td>
+            <a href="{% url 'review-detail' review.pk %}" style="font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: #818cf8; text-decoration: none;">
+              {{ review.review_id }}
+            </a>
+          </td>
+          <td>
+            <a href="{% url 'supplier-detail' review.supplier.pk %}" style="color: #fff; font-weight: 600; text-decoration: none;">
+              {{ review.supplier.name }}
+            </a>
+            <div style="font-size: 11px; color: var(--text-subtle);">{{ review.supplier.code }}</div>
+          </td>
+          <td>{{ review.reviewer.username }}</td>
+          <td>{{ review.review_date|date:"M d, Y" }}</td>
+          <td>{{ review.defect_count }} units</td>
+          <td>
+            <span style="font-family: var(--font-mono); font-weight: 800; font-size: 15px; color: #fff;">
+              {{ review.overall_score }}%
+            </span>
+          </td>
+          <td>
+            <span class="badge-status {% if review.status == 'Approved' %}badge-status-approved{% elif review.status == 'Rejected' %}badge-status-rejected{% elif review.status == 'Draft' %}badge-status-draft{% else %}badge-status-pending{% endif %}">
+              {{ review.status }}
+            </span>
+          </td>
+          <td style="text-align: right;">
+            <a href="{% url 'review-detail' review.pk %}" class="btn-saas btn-secondary-saas btn-sm-saas">
+              Details <i class="ph ph-arrow-right"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 48px;">
+            <i class="ph ph-clipboard-text" style="font-size: 36px; display: block; margin-bottom: 12px; color: var(--text-subtle);"></i>
+            No reviews match the current filter criteria.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if page_obj.has_other_pages %}
+  <div class="pagination-saas">
+    {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}&tab={{ current_tab }}&q={{ query }}&status={{ selected_status }}" class="page-btn">
+        <i class="ph ph-caret-left"></i> Previous
+      </a>
+    {% endif %}
+
+    {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+        <span class="page-btn active">{{ num }}</span>
+      {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <a href="?page={{ num }}&tab={{ current_tab }}&q={{ query }}&status={{ selected_status }}" class="page-btn">{{ num }}</a>
+      {% endif %}
+    {% endfor %}
+
+    {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}&tab={{ current_tab }}&q={{ query }}&status={{ selected_status }}" class="page-btn">
+        Next <i class="ph ph-caret-right"></i>
+      </a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
