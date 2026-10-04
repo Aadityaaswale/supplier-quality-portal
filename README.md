@@ -22,6 +22,9 @@
 
 ---
 
+> [!NOTE]
+> Release Baseline Candidate: Optimizing evaluation algorithms on feature/conflict-demo branch.
+
 ## Executive Project Overview
 
 The **Supplier Quality Review Portal** is an enterprise-grade SaaS application designed for manufacturing and quality engineering organizations to assess, track, audit, and benchmark supplier performance. It features a complete **Role-Based Access Control (RBAC)** workflow across **Admins**, **Quality Managers**, and **Reviewers**, enabling collaborative audit review generation, automated weighted score calculations, and formal approval/rejection gates.
