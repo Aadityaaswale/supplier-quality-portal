@@ -37,6 +37,9 @@ public class SupplierManagementE2ETest extends BaseTest {
             "+1-555-7890"
         );
 
+        new org.openqa.selenium.support.ui.WebDriverWait(driver, java.time.Duration.ofSeconds(10))
+            .until(org.openqa.selenium.support.ui.ExpectedConditions.urlMatches(".*/suppliers/\\d+/.*"));
+
         // Verify newly created supplier profile loaded
         Assert.assertTrue(driver.getPageSource().contains("Titan Dynamics Corp"), "New supplier name should appear on detail page.");
     }

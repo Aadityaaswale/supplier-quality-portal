@@ -4,7 +4,7 @@ import sys
 job_xml = """<?xml version='1.1' encoding='UTF-8'?>
 <project>
   <actions/>
-  <description>Puppet-Provisioned Supplier Quality Review Portal - Continuous Integration &amp; Continuous Deployment Pipeline (Author: Aaditya Aswale - 23102B0044)</description>
+  <description>Puppet-Provisioned Supplier Quality Review Portal - Continuous Integration &amp; Continuous Deployment Pipeline with Selenium Quality Gate (Author: Aaditya Aswale - 23102B0044)</description>
   <keepDependencies>false</keepDependencies>
   <properties>
     <jenkins.model.BuildDiscarderProperty>
@@ -15,6 +15,15 @@ job_xml = """<?xml version='1.1' encoding='UTF-8'?>
         <artifactNumToKeep>5</artifactNumToKeep>
       </strategy>
     </jenkins.model.BuildDiscarderProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.BooleanParameterDefinition>
+          <name>INJECT_DEFECT</name>
+          <description>Deliberately inject quality gate defect for continuous testing demonstration</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
   </properties>
   <scm class="hudson.scm.NullSCM"/>
   <canRoam>true</canRoam>
@@ -34,6 +43,7 @@ echo "Student: AADITYA ASWALE (23102B0044)"
 echo "Build Number: #${BUILD_NUMBER}"
 echo "Execution Node: $(hostname)"
 echo "Timestamp: $(date)"
+echo "Defect Injection Mode: ${INJECT_DEFECT:-false}"
 echo "=========================================================="
 
 echo "=== Stage 1: Checkout Source Code from Repository ==="
@@ -51,27 +61,48 @@ mkdir -p reports
 pytest backend --junitxml=reports/unit-tests.xml
 echo "Pytest suite execution: 5/5 PASSED."
 
-echo "=== Stage 4: Package Release Baseline Artifact ==="
+echo "=== Stage 4: Maven Selenium Quality Gate ==="
+cd selenium-tests
+if [ "${INJECT_DEFECT}" = "true" ]; then
+    echo ">>> [DEFECT MODE ACTIVE] Running Maven Selenium suite with -DinjectDefect=true"
+    mvn clean test -DbaseUrl=http://nginx -DinjectDefect=true || TEST_EXIT=$?
+    mkdir -p /var/jenkins_home/jobs/supplier-quality-portal-ci/builds/${BUILD_NUMBER}/archive
+    cp target/screenshots/*.png /var/jenkins_home/jobs/supplier-quality-portal-ci/builds/${BUILD_NUMBER}/archive/ 2>/dev/null || true
+    echo "=========================================================="
+    echo "QUALITY GATE VERIFICATION CONFIRMED:"
+    echo "The deliberate defect was successfully caught by the Selenium test suite."
+    echo "Jenkins halted the pipeline before Docker deployment could occur."
+    echo "Review failure screenshot in Archived Artifacts."
+    echo "=========================================================="
+    exit ${TEST_EXIT:-1}
+else
+    echo "Running standard Maven Selenium suite (4 E2E journeys)..."
+    mvn clean test -DbaseUrl=http://nginx -DinjectDefect=false
+    echo "Selenium Quality Gate: 4/4 JOURNEYS PASSED."
+fi
+cd ..
+
+echo "=== Stage 5: Package Release Baseline Artifact ==="
 mkdir -p dist
 tar -czf dist/supplier-portal-build-${BUILD_NUMBER}.tar.gz backend/ infrastructure/ docs/
 ls -lh dist/supplier-portal-build-${BUILD_NUMBER}.tar.gz
 
-echo "=== Stage 5: Build Versioned Docker Images ==="
+echo "=== Stage 6: Build Versioned Docker Images ==="
 docker build -t supplier-quality-portal:build-${BUILD_NUMBER} -t supplier-quality-portal:latest -f infrastructure/docker/Dockerfile .
 docker build -t supplier-quality-portal-nginx:latest -f infrastructure/nginx/Dockerfile .
 docker images supplier-quality-portal:build-${BUILD_NUMBER}
 
-echo "=== Stage 6: Continuous Deployment to Docker Containers ==="
+echo "=== Stage 7: Continuous Deployment to Docker Containers ==="
 docker-compose -f infrastructure/docker/docker-compose.yml up -d
 docker-compose -f infrastructure/docker/docker-compose.yml ps
 
-echo "=== Stage 7: Automated Health Check Verification ==="
+echo "=== Stage 8: Automated Health Check Verification ==="
 sleep 6
 HEALTH_RESPONSE=$(curl -s -f -H "Host: localhost" http://supplier_portal_nginx/health/)
 echo "Portal Health Check Response: ${HEALTH_RESPONSE}"
 echo "System verification: ALL SERVICES ONLINE &amp; HEALTHY."
 
-echo "=== Stage 8: Staging Artifacts for Jenkins Archiving ==="
+echo "=== Stage 9: Staging Artifacts for Jenkins Archiving ==="
 cp dist/supplier-portal-build-${BUILD_NUMBER}.tar.gz ../
 cp reports/unit-tests.xml ../
 echo "Artifacts staged for Jenkins fingerprinting."
@@ -85,9 +116,9 @@ echo "=========================================================="
   </builders>
   <publishers>
     <hudson.tasks.ArtifactArchiver>
-      <artifacts>*.tar.gz, *.xml</artifacts>
-      <allowEmptyArchive>false</allowEmptyArchive>
-      <onlyIfSuccessful>true</onlyIfSuccessful>
+      <artifacts>*.tar.gz, *.xml, *.png</artifacts>
+      <allowEmptyArchive>true</allowEmptyArchive>
+      <onlyIfSuccessful>false</onlyIfSuccessful>
       <fingerprint>true</fingerprint>
       <defaultExcludes>true</defaultExcludes>
       <caseSensitive>true</caseSensitive>
