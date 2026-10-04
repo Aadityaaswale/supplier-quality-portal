@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from .models import QualityReview, ReviewAuditLog
 from .serializers import QualityReviewSerializer
-from apps.accounts.permissions import IsReviewerOrHigher, IsQualityManagerOrAdmin
+from apps.accounts.permissions import IsReviewerOrHigher
 
 
 class QualityReviewViewSet(viewsets.ModelViewSet):

@@ -1,7 +1,6 @@
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
-from apps.suppliers.models import Supplier
 
 
 @pytest.mark.django_db

@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Avg, Count, Sum
+from django.db.models import Avg, Count
 from apps.suppliers.models import Supplier
 from apps.reviews.models import QualityReview
 

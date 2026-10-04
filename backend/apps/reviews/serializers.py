@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from .models import QualityReview, ReviewAuditLog
-from apps.suppliers.serializers import SupplierSerializer
 
 
 class ReviewAuditLogSerializer(serializers.ModelSerializer):
