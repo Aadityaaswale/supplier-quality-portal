@@ -23,7 +23,7 @@
 ---
 
 > [!NOTE]
-> Release Baseline Candidate: Integrating production enterprise release candidate on develop branch.
+> Release Baseline v1.0.0: Enterprise quality governance and automated evaluation baseline.
 
 ## Executive Project Overview
 
