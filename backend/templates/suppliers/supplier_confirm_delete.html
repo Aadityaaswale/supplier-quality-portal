@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirm Deletion - {{ supplier.name }}{% endblock %}
+{% block breadcrumb %}<a href="{% url 'supplier-list' %}">Suppliers</a> <i class="ph ph-caret-right" style="font-size: 12px;"></i> Delete{% endblock %}
+
+{% block content %}
+<div style="max-width: 500px; margin: 60px auto;">
+  <div class="card-saas" style="text-align: center; border-color: rgba(239, 68, 68, 0.4);">
+    <div style="width: 56px; height: 56px; border-radius: var(--radius-full); background: rgba(239, 68, 68, 0.15); display: inline-flex; align-items: center; justify-content: center; font-size: 28px; color: #ef4444; margin-bottom: 16px;">
+      <i class="ph ph-warning-octagon"></i>
+    </div>
+    <h2 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 8px;">Delete Supplier Record?</h2>
+    <p style="font-size: 14px; color: var(--text-muted); line-height: 1.6; margin-bottom: 24px;">
+      Are you sure you want to permanently delete <strong>{{ supplier.name }}</strong> ({{ supplier.code }})? All related quality reviews and audit histories will also be removed.
+    </p>
+
+    <form method="POST">
+      {% csrf_token %}
+      <div style="display: flex; justify-content: center; gap: 12px;">
+        <a href="{% url 'supplier-detail' supplier.pk %}" class="btn-saas btn-secondary-saas">
+          Cancel
+        </a>
+        <button type="submit" id="btn-confirm-delete" class="btn-saas btn-danger-saas">
+          <i class="ph ph-trash"></i> Yes, Delete Supplier
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

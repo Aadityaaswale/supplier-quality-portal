@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign In - Supplier Quality Review Portal{% endblock %}
+
+{% block auth_content %}
+<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 10%, #1e1b4b 0%, #0b0f19 70%); padding: 24px;">
+  <div style="width: 100%; max-width: 440px;">
+    <!-- Branding Header -->
+    <div style="text-align: center; margin-bottom: 32px;">
+      <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 0 24px rgba(99, 102, 241, 0.4); margin-bottom: 16px;">
+        <i class="ph ph-shield-check" style="color: #fff;"></i>
+      </div>
+      <h1 style="font-size: 24px; font-weight: 800; color: #fff; letter-spacing: -0.02em;">Supplier Quality Portal</h1>
+      <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">
+        Puppet-Provisioned DevOps Architecture
+      </p>
+    </div>
+
+    <!-- Login Card -->
+    <div class="card-saas" style="border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6);">
+      {% if messages %}
+        {% for message in messages %}
+        <div class="alert-saas {% if message.tags == 'error' %}alert-error-saas{% else %}alert-info-saas{% endif %}">
+          <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+      {% endif %}
+
+      <form method="POST" action="{% url 'login' %}">
+        {% csrf_token %}
+        <div class="form-group-saas">
+          <label class="form-label-saas" for="username">Username</label>
+          <input type="text" name="username" id="username" class="form-control-saas" required autofocus placeholder="Enter your username">
+        </div>
+
+        <div class="form-group-saas">
+          <label class="form-label-saas" for="password">Password</label>
+          <input type="password" name="password" id="password" class="form-control-saas" required placeholder="Enter password">
+        </div>
+
+        <button type="submit" id="btn-submit-login" class="btn-saas btn-primary-saas" style="width: 100%; padding: 12px; margin-top: 8px;">
+          <i class="ph ph-sign-in"></i> Sign In to Portal
+        </button>
+      </form>
+
+      <!-- Quick Role Fill Helper for Live Demonstration & Testing -->
+      <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-subtle);">
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-subtle); letter-spacing: 0.05em; margin-bottom: 10px; text-align: center;">
+          Quick Demo Credentials
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+          <button type="button" class="btn-saas btn-secondary-saas btn-sm-saas" style="font-size: 11px;" onclick="fillCredentials('admin', 'Admin@12345')">
+            Admin
+          </button>
+          <button type="button" class="btn-saas btn-secondary-saas btn-sm-saas" style="font-size: 11px;" onclick="fillCredentials('manager', 'Manager@12345')">
+            Manager
+          </button>
+          <button type="button" class="btn-saas btn-secondary-saas btn-sm-saas" style="font-size: 11px;" onclick="fillCredentials('reviewer', 'Reviewer@12345')">
+            Reviewer
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Student Metadata Footer -->
+    <div style="text-align: center; margin-top: 24px; font-size: 12px; color: var(--text-subtle); font-family: var(--font-mono);">
+      Student: AADITYA ASWALE &bull; ID: 23102B0044
+    </div>
+  </div>
+</div>
+
+<script>
+function fillCredentials(user, pass) {
+  document.getElementById('username').value = user;
+  document.getElementById('password').value = pass;
+}
+</script>
+{% endblock %}

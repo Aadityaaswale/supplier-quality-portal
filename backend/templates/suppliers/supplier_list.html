@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}Supplier Directory{% endblock %}
+{% block breadcrumb %}Suppliers{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Supplier Directory</h1>
+    <p class="page-subtitle">Manage onboarded manufacturing partners and real-time performance grades</p>
+  </div>
+  {% if IS_QUALITY_MANAGER %}
+  <a href="{% url 'supplier-create' %}" class="btn-saas btn-primary-saas" id="btn-add-supplier">
+    <i class="ph ph-plus-circle"></i> Onboard New Supplier
+  </a>
+  {% endif %}
+</div>
+
+<!-- Search & Filtering Bar -->
+<div class="card-saas" style="margin-bottom: 24px; padding: 18px 24px;">
+  <form method="GET" action="{% url 'supplier-list' %}" style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center;">
+    <div style="flex-grow: 1; min-width: 240px; position: relative;">
+      <i class="ph ph-magnifying-glass" style="position: absolute; left: 14px; top: 12px; color: var(--text-muted); font-size: 16px;"></i>
+      <input type="text" name="q" value="{{ query }}" placeholder="Search by name, code, contact or ID..." class="form-control-saas" style="padding-left: 40px;" id="input-search-supplier">
+    </div>
+
+    <div style="min-width: 160px;">
+      <select name="category" class="form-control-saas">
+        <option value="">All Categories</option>
+        {% for cat in categories %}
+        <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="min-width: 150px;">
+      <select name="status" class="form-control-saas">
+        <option value="">All Statuses</option>
+        {% for st in statuses %}
+        <option value="{{ st }}" {% if selected_status == st %}selected{% endif %}>{{ st }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit" class="btn-saas btn-secondary-saas" id="btn-filter-supplier">
+      <i class="ph ph-funnel"></i> Filter
+    </button>
+    {% if query or selected_category or selected_status %}
+    <a href="{% url 'supplier-list' %}" class="btn-saas btn-secondary-saas" style="color: var(--text-muted);">
+      Reset
+    </a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Supplier Data Table -->
+<div class="card-saas">
+  <div class="table-responsive-saas">
+    <table class="table-saas" id="suppliers-table">
+      <thead>
+        <tr>
+          <th>Supplier ID</th>
+          <th>Name / Organization</th>
+          <th>Category</th>
+          <th>Contact Person</th>
+          <th>Status</th>
+          <th>Quality Score</th>
+          <th>Grade</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for supplier in page_obj %}
+        <tr>
+          <td>
+            <a href="{% url 'supplier-detail' supplier.pk %}" style="font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: #818cf8; text-decoration: none;">
+              {{ supplier.supplier_id }}
+            </a>
+          </td>
+          <td>
+            <a href="{% url 'supplier-detail' supplier.pk %}" style="color: #fff; font-weight: 700; text-decoration: none;">
+              {{ supplier.name }}
+            </a>
+            <div style="font-size: 11px; color: var(--text-subtle);">Code: {{ supplier.code }}</div>
+          </td>
+          <td>{{ supplier.category }}</td>
+          <td>
+            <div>{{ supplier.contact_person }}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">{{ supplier.email }}</div>
+          </td>
+          <td>
+            <span class="badge-status {% if supplier.status == 'Active' %}badge-status-active{% elif supplier.status == 'Under Review' %}badge-status-under-review{% else %}badge-status-rejected{% endif %}">
+              {{ supplier.status }}
+            </span>
+          </td>
+          <td>
+            <span style="font-family: var(--font-mono); font-weight: 800; font-size: 15px; color: #fff;">
+              {{ supplier.overall_quality_score }}%
+            </span>
+          </td>
+          <td>
+            <span class="grade-pill grade-{{ supplier.grade|slugify }}">{{ supplier.grade }}</span>
+          </td>
+          <td style="text-align: right;">
+            <a href="{% url 'supplier-detail' supplier.pk %}" class="btn-saas btn-secondary-saas btn-sm-saas">
+              View Profile <i class="ph ph-arrow-right"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 48px;">
+            <i class="ph ph-buildings" style="font-size: 36px; display: block; margin-bottom: 12px; color: var(--text-subtle);"></i>
+            No suppliers match your search criteria.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if page_obj.has_other_pages %}
+  <div class="pagination-saas">
+    {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}&q={{ query }}&category={{ selected_category }}&status={{ selected_status }}" class="page-btn">
+        <i class="ph ph-caret-left"></i> Previous
+      </a>
+    {% endif %}
+
+    {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+        <span class="page-btn active">{{ num }}</span>
+      {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <a href="?page={{ num }}&q={{ query }}&category={{ selected_category }}&status={{ selected_status }}" class="page-btn">{{ num }}</a>
+      {% endif %}
+    {% endfor %}
+
+    {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}&q={{ query }}&category={{ selected_category }}&status={{ selected_status }}" class="page-btn">
+        Next <i class="ph ph-caret-right"></i>
+      </a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
