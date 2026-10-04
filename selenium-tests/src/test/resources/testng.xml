@@ -1,0 +1,15 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd" >
+<suite name="Supplier Quality Portal E2E Suite" verbose="1">
+    <listeners>
+        <listener class-name="com.quality.portal.utils.TestListener" />
+    </listeners>
+
+    <test name="Supplier Portal Automated Browser Tests">
+        <classes>
+            <class name="com.quality.portal.tests.LoginDashboardE2ETest" />
+            <class name="com.quality.portal.tests.SupplierManagementE2ETest" />
+            <class name="com.quality.portal.tests.ReviewWorkflowE2ETest" />
+            <class name="com.quality.portal.tests.NegativeDefectValidationTest" />
+        </classes>
+    </test>
+</suite>

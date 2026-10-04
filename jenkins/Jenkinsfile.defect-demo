@@ -1,0 +1,73 @@
+// ==============================================================================
+// Jenkinsfile for Week 10 Continuous Testing Deliberate Defect Demonstration
+// Student: AADITYA ASWALE (23102B0044)
+//
+// Injects -DinjectDefect=true to intentionally fail the Selenium quality gate stage,
+// halt deployment, capture the failure screenshot, and demonstrate quality gate protection.
+// ==============================================================================
+
+pipeline {
+    agent any
+
+    environment {
+        APP_NAME = 'supplier-quality-portal'
+        INJECT_DEFECT = 'true'
+    }
+
+    stages {
+        stage('1. Checkout SCM') {
+            steps {
+                checkout scm
+                echo "Testing commit: ${GIT_COMMIT}"
+            }
+        }
+
+        stage('2. Build & Unit Tests') {
+            steps {
+                bat label: 'Run Unit Tests', script: '''
+                    python -m venv venv
+                    call venv\\Scripts\\activate.bat
+                    pip install -r backend\\requirements.txt
+                    pytest backend --junitxml=reports/unit-tests.xml
+                '''
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'reports/unit-tests.xml'
+                }
+            }
+        }
+
+        stage('3. Maven Selenium Quality Gate (Deliberate Defect Injected)') {
+            steps {
+                echo "Executing Selenium tests with deliberate defect injection flag: -DinjectDefect=true"
+                dir('selenium-tests') {
+                    // This command will exit with failure (code 1)
+                    bat 'mvn clean test -Dheadless=true -DinjectDefect=true'
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'selenium-tests/target/surefire-reports/*.xml'
+                    archiveArtifacts allowEmptyArchive: true, artifacts: 'selenium-tests/target/screenshots/*.png'
+                }
+            }
+        }
+
+        stage('4. Docker Deployment (Protected Stage)') {
+            steps {
+                echo "THIS STAGE MUST NEVER EXECUTE WHEN TESTS FAIL."
+                echo "Quality gate has successfully halted deployment to protect production environment!"
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo "QUALITY GATE VERIFICATION CONFIRMED:"
+            echo "The deliberate defect was successfully caught by the Selenium test suite."
+            echo "Jenkins halted the pipeline before Docker deployment could occur."
+            echo "Review failure screenshot in Archived Artifacts."
+        }
+    }
+}

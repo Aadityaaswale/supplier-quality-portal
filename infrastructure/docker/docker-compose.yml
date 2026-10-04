@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: supplier_portal_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-supplier_portal_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d supplier_portal_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - portal_network
+
+  web:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/Dockerfile
+    image: supplier-quality-portal:latest
+    container_name: supplier_portal_web
+    restart: always
+    environment:
+      DEBUG: "False"
+      USE_SQLITE: "False"
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-supplier_portal_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      SECRET_KEY: ${SECRET_KEY:-django-prod-secret-key-aaditya-aswale-23102b0044}
+      ALLOWED_HOSTS: "localhost,127.0.0.1,web,nginx,0.0.0.0"
+      CSRF_TRUSTED_ORIGINS: "http://localhost,http://127.0.0.1,http://localhost:80"
+      ENVIRONMENT: "production-docker"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - static_volume:/app/backend/staticfiles
+      - media_volume:/app/backend/media
+    networks:
+      - portal_network
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: supplier_portal_nginx
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - web
+    volumes:
+      - ../nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_volume:/app/staticfiles:ro
+      - media_volume:/app/media:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/health/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - portal_network
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+
+networks:
+  portal_network:
+    driver: bridge

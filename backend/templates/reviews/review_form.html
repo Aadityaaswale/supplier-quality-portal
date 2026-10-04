@@ -101,11 +101,12 @@
         </p>
 
         <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 10px;">
+          <input type="hidden" name="action" id="form_action_input" value="submit_for_review">
           {% if not is_edit %}
-          <button type="submit" name="action" value="submit_for_review" id="btn-submit-direct" class="btn-saas btn-primary-saas" style="width: 100%;">
+          <button type="submit" onclick="document.getElementById('form_action_input').value='submit_for_review'" id="btn-submit-direct" class="btn-saas btn-primary-saas" style="width: 100%;">
             <i class="ph ph-paper-plane-tilt"></i> Submit for Approval
           </button>
-          <button type="submit" name="action" value="save_draft" id="btn-save-draft" class="btn-saas btn-secondary-saas" style="width: 100%;">
+          <button type="submit" onclick="document.getElementById('form_action_input').value='save_draft'" id="btn-save-draft" class="btn-saas btn-secondary-saas" style="width: 100%;">
             <i class="ph ph-floppy-disk"></i> Save Draft
           </button>
           {% else %}

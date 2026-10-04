@@ -1,0 +1,144 @@
+---
+# ==============================================================================
+# Master Provisioning & Deployment Playbook (Idempotent)
+# Project: Puppet-Provisioned Supplier Quality Review Portal
+# Student: AADITYA ASWALE (23102B0044)
+# ==============================================================================
+
+- name: Provision and Deploy Supplier Quality Review Portal
+  hosts: portal_servers
+  become: yes
+  vars:
+    app_root: "/opt/supplier-quality-portal"
+    app_user: "deployer"
+    docker_compose_version: "v2.24.5"
+    git_repo_url: "https://github.com/aaditya-aswale/supplier-quality-portal.git"
+    app_version_tag: "v1.0.0"
+
+  tasks:
+    - name: 1. Update APT package cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: 2. Install prerequisite system packages
+      ansible.builtin.package:
+        name:
+          - curl
+          - git
+          - python3
+          - python3-pip
+          - nginx
+          - ufw
+        state: present
+
+    - name: 3. Create dedicated unprivileged deployer user
+      ansible.builtin.user:
+        name: "{{ app_user }}"
+        shell: /bin/bash
+        create_home: yes
+        groups: sudo,docker
+        append: yes
+        state: present
+
+    - name: 4. Ensure deployment and volume directories exist with correct permissions
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+      loop:
+        - "{{ app_root }}"
+        - "{{ app_root }}/data/postgres"
+        - "{{ app_root }}/data/static"
+        - "{{ app_root }}/data/media"
+
+    - name: 5. Deploy environment configuration (.env)
+      ansible.builtin.copy:
+        dest: "{{ app_root }}/.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0600'
+        content: |
+          DEBUG=False
+          USE_SQLITE=False
+          SECRET_KEY=ansible-provisioned-secret-key-aaditya-23102b0044!
+          DB_NAME=supplier_portal_db
+          DB_USER=postgres
+          DB_PASSWORD=postgres
+          DB_HOST=db
+          DB_PORT=5432
+          ALLOWED_HOSTS=localhost,127.0.0.1,web,nginx
+          ENVIRONMENT=production-ansible
+
+    - name: 6. Deploy Nginx reverse proxy configuration
+      ansible.builtin.copy:
+        dest: "/etc/nginx/sites-available/supplier_portal.conf"
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          server {
+              listen 80;
+              server_name localhost 127.0.0.1;
+
+              location /static/ {
+                  alias {{ app_root }}/data/static/;
+                  expires 30d;
+              }
+
+              location /health/ {
+                  proxy_pass http://127.0.0.1:8000/health/;
+                  proxy_set_header Host $host;
+              }
+
+              location / {
+                  proxy_pass http://127.0.0.1:8000;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+              }
+          }
+      notify: Reload Nginx
+
+    - name: 7. Enable Nginx site configuration
+      ansible.builtin.file:
+        src: "/etc/nginx/sites-available/supplier_portal.conf"
+        dest: "/etc/nginx/sites-enabled/supplier_portal.conf"
+        state: link
+      notify: Reload Nginx
+
+    - name: 8. Ensure Nginx service is running and enabled
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: 9. Launch container stack via Docker Compose
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_root }}/infrastructure/docker"
+        state: present
+        pull: always
+      ignore_errors: yes
+
+    - name: 10. Automated Health Check Verification
+      ansible.builtin.uri:
+        url: "http://localhost:80/health/"
+        method: GET
+        status_code: 200
+        return_content: yes
+      register: health_result
+      until: health_result.status == 200
+      retries: 6
+      delay: 5
+
+    - name: 11. Log Health Check Outcome
+      ansible.builtin.debug:
+        msg: "Supplier Portal Health Verified: {{ health_result.json.status }} (Version: {{ health_result.json.version }})"
+
+  handlers:
+    - name: Reload Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded

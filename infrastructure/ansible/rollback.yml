@@ -1,0 +1,48 @@
+---
+# ==============================================================================
+# Automated Rollback Playbook (Week 14 Reliability & Recovery Requirement)
+# Student: AADITYA ASWALE (23102B0044)
+# ==============================================================================
+
+- name: Automated Rollback to Previous Stable Release Baseline
+  hosts: portal_servers
+  become: yes
+  vars:
+    app_root: "/opt/supplier-quality-portal"
+    previous_stable_tag: "v1.0.0"
+
+  tasks:
+    - name: 1. Alert administrator of rollback initiation
+      ansible.builtin.debug:
+        msg: "INITIATING AUTOMATED ROLLBACK TO STABLE BASELINE: {{ previous_stable_tag }}"
+
+    - name: 2. Stop currently deployed failing containers
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_root }}/infrastructure/docker"
+        state: absent
+      ignore_errors: yes
+
+    - name: 3. Restore previous stable docker image tag
+      ansible.builtin.command:
+        cmd: "docker tag supplier-quality-portal:{{ previous_stable_tag }} supplier-quality-portal:latest"
+      ignore_errors: yes
+
+    - name: 4. Relaunch previous stable container stack
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_root }}/infrastructure/docker"
+        state: present
+
+    - name: 5. Verify post-rollback service health
+      ansible.builtin.uri:
+        url: "http://localhost:80/health/"
+        method: GET
+        status_code: 200
+        return_content: yes
+      register: rollback_health
+      until: rollback_health.status == 200
+      retries: 5
+      delay: 4
+
+    - name: 6. Confirm rollback recovery status
+      ansible.builtin.debug:
+        msg: "ROLLBACK SUCCESSFUL: Restored service health status is {{ rollback_health.json.status }}"

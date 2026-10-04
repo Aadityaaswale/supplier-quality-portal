@@ -1,0 +1,133 @@
+// ==============================================================================
+// Declarative Jenkinsfile: Continuous Integration & Deployment Pipeline
+// Project: Puppet-Provisioned Supplier Quality Review Portal
+// Student: AADITYA ASWALE (23102B0044)
+// ==============================================================================
+
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['staging', 'production', 'local-docker'], description: 'Deployment Target Environment')
+        booleanParam(name: 'RUN_SELENIUM', defaultValue: true, description: 'Execute Maven Selenium Quality Gate')
+        string(name: 'DOCKER_TAG', defaultValue: "build-${BUILD_NUMBER}", description: 'Version Tag for Docker Image')
+    }
+
+    environment {
+        APP_NAME = 'supplier-quality-portal'
+        REGISTRY = 'local-registry:5000'
+        PYTHONUNBUFFERED = '1'
+        SELENIUM_HEADLESS = 'true'
+    }
+
+    stages {
+        stage('1. Checkout SCM') {
+            steps {
+                echo "=== Stage 1: Checking out source code ==="
+                checkout scm
+                echo "Building Commit: ${GIT_COMMIT} on Branch: ${GIT_BRANCH}"
+            }
+        }
+
+        stage('2. Python Dependencies & Lint') {
+            steps {
+                echo "=== Stage 2: Python Linting & Dependency Validation ==="
+                bat label: 'Install Dependencies & Flake8 Lint', script: '''
+                    python -m venv venv
+                    call venv\\Scripts\\activate.bat
+                    pip install --upgrade pip
+                    pip install -r backend\\requirements.txt
+                    flake8 backend --count --max-line-length=120 --statistics
+                '''
+            }
+        }
+
+        stage('3. Unit & Integration Tests') {
+            steps {
+                echo "=== Stage 3: Executing Pytest Test Suite ==="
+                bat label: 'Run Pytest', script: '''
+                    call venv\\Scripts\\activate.bat
+                    set DJANGO_SETTINGS_MODULE=config.settings
+                    pytest backend --junitxml=reports/unit-tests.xml
+                '''
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'reports/unit-tests.xml'
+                }
+            }
+        }
+
+        stage('4. Package Release Artifact') {
+            steps {
+                echo "=== Stage 4: Packaging Release Baseline Artifact ==="
+                bat label: 'Archive Artifact', script: '''
+                    if not exist dist mkdir dist
+                    tar -czf dist\\supplier-portal-${BUILD_NUMBER}.tar.gz backend\\ infrastructure\\ docs\\
+                '''
+                archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
+            }
+        }
+
+        stage('5. Maven Selenium Quality Gate') {
+            when {
+                expression { return params.RUN_SELENIUM }
+            }
+            steps {
+                echo "=== Stage 5: Executing Maven Selenium E2E Tests ==="
+                dir('selenium-tests') {
+                    bat 'mvn clean test -Dheadless=true'
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'selenium-tests/target/surefire-reports/*.xml'
+                    archiveArtifacts allowEmptyArchive: true, artifacts: 'selenium-tests/target/screenshots/*.png'
+                }
+            }
+        }
+
+        stage('6. Docker Image Build & Tag') {
+            steps {
+                echo "=== Stage 6: Building Versioned Docker Image ==="
+                bat "docker build -t ${APP_NAME}:${params.DOCKER_TAG} -t ${APP_NAME}:latest -f infrastructure/docker/Dockerfile ."
+            }
+        }
+
+        stage('7. Deploy Container') {
+            steps {
+                echo "=== Stage 7: Deploying Fresh Containerized Service ==="
+                bat '''
+                    cd infrastructure/docker
+                    docker compose down
+                    docker compose up -d --build
+                '''
+            }
+        }
+
+        stage('8. Health Check Verification') {
+            steps {
+                echo "=== Stage 8: Verifying System Health Probe ==="
+                bat '''
+                    powershell -Command "Start-Sleep -Seconds 12; try { $res = Invoke-RestMethod -Uri 'http://localhost:80/health/' -TimeoutSec 10; if ($res.status -eq 'healthy') { Write-Host 'Health check verified successfully!'; exit 0 } else { Write-Error 'Unhealthy response'; exit 1 } } catch { Write-Error $_; exit 1 }"
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "=========================================================="
+            echo "PIPELINE SUCCESSFUL: Supplier Quality Portal Deployed!"
+            echo "Commit: ${GIT_COMMIT}"
+            echo "Artifact: dist/supplier-portal-${BUILD_NUMBER}.tar.gz"
+            echo "=========================================================="
+        }
+        failure {
+            echo "=========================================================="
+            echo "PIPELINE FAILED: Deployment stopped by Quality Gate."
+            echo "Examine stage logs and archived screenshots for diagnosis."
+            echo "=========================================================="
+        }
+    }
+}
