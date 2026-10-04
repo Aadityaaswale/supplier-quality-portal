@@ -159,15 +159,15 @@ $$\text{Overall Score} = (\text{Product Quality} \times 0.45) + (\text{Complianc
 | **Week 4: Git Repo Init** | Complete (`.git`, `README.md`, `.gitignore`) | Branches and history verified | **VERIFIED** | Clean commits, branch naming convention. |
 | **Week 5: Feature Branching** | Complete (`feature/supplier-management`) | Merged into `develop` | **VERIFIED** | PR commit history preserved in git log. |
 | **Week 6: MVP Completion & Tag**| Complete (Full CRUD, conflict demo resolved) | Release tag `v1.0.0` verified | **VERIFIED** | Conflict resolution commit `af4e09d`. |
-| **Week 7: Jenkins CI Server** | Complete (`jenkins/Jenkinsfile`) | Live Jenkins LTS (`jenkins_ci_server`) Build #1 & #3 | **VERIFIED** | Clean CI execution; archived `dist/supplier-portal-build-3.tar.gz` & `unit-tests.xml`. |
-| **Week 8: Pipeline as Code** | Complete (`jenkins/Jenkinsfile`) | Declarative Pipeline run (Build #3) | **VERIFIED** | 6 declarative stages executed; deployed stack; `/health/` HTTP 200 verified. |
-| **Week 9: Selenium via Maven** | Complete (`selenium-tests/`, `pom.xml`) | Executed `mvn clean test` (4/4 PASS) | **VERIFIED** | Headless Chrome against live portal in 14.93s. |
-| **Week 10: Quality Gate & Defect**| Complete (`NegativeDefectValidationTest.java`) | Executed `-DinjectDefect=true` | **VERIFIED** | Screenshot captured to `target/screenshots/`; halted pipeline. Clean rerun passed. |
+| **Week 7: Jenkins CI Server** | Complete (`jenkins/Jenkinsfile`) | Live Jenkins LTS (`jenkins_ci_server`) Build #1, #3 & #5 | **VERIFIED** | Clean CI execution; archived `dist/supplier-portal-build-*.tar.gz` & `unit-tests.xml`. |
+| **Week 8: Pipeline as Code** | Complete (`jenkins/Jenkinsfile`) | Declarative Pipeline run (Build #3 & #5) | **VERIFIED** | 8 declarative stages executed; deployed stack; `/health/` HTTP 200 verified. |
+| **Week 9: Selenium via Maven** | Complete (`selenium-tests/`, `pom.xml`) | Executed `mvn clean test` (4/4 PASS) | **VERIFIED** | Headless Chrome against live portal in 10.84s (4/4 PASS). |
+| **Week 10: Quality Gate & Defect**| Complete (`NegativeDefectValidationTest.java`) | Executed `-DinjectDefect=true` & Build #4 | **VERIFIED** | Screenshot captured to `target/screenshots/`; halted pipeline. Clean rerun passed. |
 | **Week 11: Docker Lifecycle** | Complete (`Dockerfile`, `compose.yml`) | Multi-stage build, run, stop, start | **VERIFIED** | 121 MB image, non-root `appuser`, healthy stack on ports 80 & 8000. |
-| **Week 12: Jenkins-Docker CD** | Complete (`docker-compose.yml`, `Jenkinsfile`) | Automated CD stage in Jenkins Build #3 | **VERIFIED** | Built image `supplier-quality-portal:build-3`, launched fresh stack, verified health probe. |
-| **Week 13: Puppet IaC Module** | Complete (`infrastructure/puppet/`) | `docker exec iac_target_node puppet apply` | **VERIFIED** | Compiled in 0.46s, managed packages, user, dirs, nginx reverse proxy & services. |
+| **Week 12: Jenkins-Docker CD** | Complete (`docker-compose.yml`, `Jenkinsfile`) | Automated CD stage in Jenkins Build #5 | **VERIFIED** | Built image `supplier-quality-portal:build-5`, launched fresh stack, verified health probe. |
+| **Week 13: Puppet IaC Module** | Complete (`infrastructure/puppet/`) | `docker exec iac_target_node puppet apply` | **VERIFIED** | Compiled in 0.44s, applied in 0.08s, managed packages, user, dirs, nginx reverse proxy & services. |
 | **Week 14: Provision & Idempotency**| Complete (`site.yml`, `rollback.yml`)| Dual Ansible execution & rollback | **VERIFIED** | Run 1: `changed=3`; Run 2 (Idempotency): `changed=0`; Rollback: restored `v1.0.0` with HTTP 200. |
-| **Week 15: Final Docs & Viva** | Complete (23 technical documents in `docs/`) | Complete documentation & presentation | **VERIFIED** | All academic criteria, slide deck (`23-final-project-presentation.md`), & viva package complete. |
+| **Week 15: Final Docs & Viva** | Complete (24 technical documents in `docs/` & `docs/evidence/`) | Complete documentation & presentation | **VERIFIED** | All academic criteria, slide deck (`23-final-project-presentation.md`), viva package, and troubleshooting (`24-troubleshooting-limitations-and-future-work.md`) complete. |
 
 ---
 
@@ -175,13 +175,14 @@ $$\text{Overall Score} = (\text{Product Quality} \times 0.45) + (\text{Complianc
 
 1. **Overall Curriculum Status:** 100% Complete (15 of 15 Weeks Fully Verified with Real Execution Logs).
 2. **Key Execution Artifacts:**
-   - Jenkins Controller running on `http://localhost:8080/` with verified Build #1 and Build #3.
+   - Jenkins Controller running on `http://localhost:8080/` with verified Build #1, #3, #4, and #5.
    - Live Application Stack running on `http://localhost:80/` (Nginx + Gunicorn + PostgreSQL).
    - Apache Maven Selenium Suite passing 100% (`BUILD SUCCESS`) in `selenium-tests/`.
    - Puppet module catalog compiled and applied cleanly inside `iac_target_node`.
    - Ansible provisioning executed (`changed=3`), idempotency proven (`changed=0`), and automated rollback verified (`ROLLBACK SUCCESSFUL`).
    - Self-contained traceability matrix in [`docs/15_WEEK_REQUIREMENTS_TRACEABILITY.md`](file:///c:/Users/Aaditya/.gemini/antigravity-ide/scratch/supplier-quality-portal/docs/15_WEEK_REQUIREMENTS_TRACEABILITY.md).
    - Final presentation slide deck in [`docs/23-final-project-presentation.md`](file:///c:/Users/Aaditya/.gemini/antigravity-ide/scratch/supplier-quality-portal/docs/23-final-project-presentation.md).
+   - Enterprise troubleshooting runbook and limitations in [`docs/24-troubleshooting-limitations-and-future-work.md`](file:///c:/Users/Aaditya/.gemini/antigravity-ide/scratch/supplier-quality-portal/docs/24-troubleshooting-limitations-and-future-work.md).
 
 ---
 
