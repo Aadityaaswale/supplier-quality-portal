@@ -1,0 +1,3 @@
+# Preserve LF line endings for shell scripts and Docker entrypoint
+*.sh text eol=lf
+Dockerfile text eol=lf

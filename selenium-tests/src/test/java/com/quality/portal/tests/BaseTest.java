@@ -11,7 +11,7 @@ public abstract class BaseTest {
 
     @BeforeMethod
     public void setUp() {
-        this.baseUrl = System.getProperty("baseUrl", "http://127.0.0.1:8000");
+        this.baseUrl = System.getProperty("baseUrl", System.getenv("PORTAL_URL") != null ? System.getenv("PORTAL_URL") : "http://127.0.0.1");
         DriverManager.initDriver();
         this.driver = DriverManager.getDriver();
         this.driver.get(baseUrl + "/accounts/login/");
