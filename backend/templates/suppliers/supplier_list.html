@@ -1,31 +1,78 @@
 {% extends 'base.html' %}
 
-{% block title %}Supplier Directory{% endblock %}
+{% block title %}Supplier Management{% endblock %}
 {% block breadcrumb %}Suppliers{% endblock %}
 
 {% block content %}
+<!-- Page Header -->
 <div class="page-header">
   <div>
-    <h1 class="page-title">Supplier Directory</h1>
-    <p class="page-subtitle">Manage onboarded manufacturing partners and real-time performance grades</p>
+    <h1 class="page-title">Supplier Management</h1>
+    <p class="page-subtitle">Directory of certified manufacturing partners, quality scores, and real-time audit grades</p>
   </div>
-  {% if IS_QUALITY_MANAGER %}
-  <a href="{% url 'supplier-create' %}" class="btn-saas btn-primary-saas" id="btn-add-supplier">
-    <i class="ph ph-plus-circle"></i> Onboard New Supplier
-  </a>
-  {% endif %}
+  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+    <button type="button" class="btn-saas btn-secondary-saas" id="btn-refresh-api" title="Refresh live data from /api/suppliers/">
+      <i class="ph ph-arrows-clockwise" id="icon-refresh"></i> Refresh Data
+    </button>
+    {% if IS_QUALITY_MANAGER %}
+    <a href="{% url 'supplier-create' %}" class="btn-saas btn-primary-saas" id="btn-add-supplier">
+      <i class="ph ph-plus-circle"></i> Onboard New Supplier
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- KPI Summary Ribbon -->
+<div class="kpi-grid" style="margin-bottom: 24px;">
+  <div class="kpi-card kpi-cyan">
+    <div class="kpi-label">
+      <span>Total Suppliers</span>
+      <i class="ph ph-buildings"></i>
+    </div>
+    <div class="kpi-value" id="kpi-total">{{ total_count|default:"0" }}</div>
+    <div class="kpi-subtext">Registered partners</div>
+  </div>
+
+  <div class="kpi-card kpi-emerald">
+    <div class="kpi-label">
+      <span>Active Suppliers</span>
+      <i class="ph ph-check-circle"></i>
+    </div>
+    <div class="kpi-value" id="kpi-active">{{ active_count|default:"0" }}</div>
+    <div class="kpi-subtext">Certified production line</div>
+  </div>
+
+  <div class="kpi-card kpi-amber">
+    <div class="kpi-label">
+      <span>Under Review</span>
+      <i class="ph ph-hourglass-high"></i>
+    </div>
+    <div class="kpi-value" id="kpi-under-review">{{ under_review_count|default:"0" }}</div>
+    <div class="kpi-subtext">Audits in progress</div>
+  </div>
+
+  <div class="kpi-card kpi-emerald">
+    <div class="kpi-label">
+      <span>Avg Quality Score</span>
+      <i class="ph ph-trend-up"></i>
+    </div>
+    <div class="kpi-value" id="kpi-avg-score">{{ avg_score|default:"0.00" }}%</div>
+    <div class="kpi-subtext">Active supplier benchmark</div>
+  </div>
 </div>
 
 <!-- Search & Filtering Bar -->
 <div class="card-saas" style="margin-bottom: 24px; padding: 18px 24px;">
-  <form method="GET" action="{% url 'supplier-list' %}" style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center;">
-    <div style="flex-grow: 1; min-width: 240px; position: relative;">
+  <form id="supplier-filter-form" method="GET" action="{% url 'supplier-list' %}" style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center;">
+    <!-- Search Box -->
+    <div style="flex-grow: 1; min-width: 260px; position: relative;">
       <i class="ph ph-magnifying-glass" style="position: absolute; left: 14px; top: 12px; color: var(--text-muted); font-size: 16px;"></i>
-      <input type="text" name="q" value="{{ query }}" placeholder="Search by name, code, contact or ID..." class="form-control-saas" style="padding-left: 40px;" id="input-search-supplier">
+      <input type="text" name="q" id="input-search-supplier" value="{{ query }}" placeholder="Search by name, ID, code, or contact..." class="form-control-saas" style="padding-left: 40px; width: 100%;">
     </div>
 
-    <div style="min-width: 160px;">
-      <select name="category" class="form-control-saas">
+    <!-- Category Filter -->
+    <div style="min-width: 170px;">
+      <select name="category" id="select-category" class="form-control-saas" style="width: 100%;">
         <option value="">All Categories</option>
         {% for cat in categories %}
         <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
@@ -33,8 +80,9 @@
       </select>
     </div>
 
-    <div style="min-width: 150px;">
-      <select name="status" class="form-control-saas">
+    <!-- Status Filter -->
+    <div style="min-width: 160px;">
+      <select name="status" id="select-status" class="form-control-saas" style="width: 100%;">
         <option value="">All Statuses</option>
         {% for st in statuses %}
         <option value="{{ st }}" {% if selected_status == st %}selected{% endif %}>{{ st }}</option>
@@ -42,36 +90,80 @@
       </select>
     </div>
 
+    <!-- Ordering / Sort -->
+    <div style="min-width: 170px;">
+      <select name="ordering" id="select-ordering" class="form-control-saas" style="width: 100%;">
+        <option value="-created_at">Newest First</option>
+        <option value="-overall_quality_score">Highest Score</option>
+        <option value="overall_quality_score">Lowest Score</option>
+        <option value="name">Name (A-Z)</option>
+      </select>
+    </div>
+
+    <!-- Actions -->
     <button type="submit" class="btn-saas btn-secondary-saas" id="btn-filter-supplier">
       <i class="ph ph-funnel"></i> Filter
     </button>
-    {% if query or selected_category or selected_status %}
-    <a href="{% url 'supplier-list' %}" class="btn-saas btn-secondary-saas" style="color: var(--text-muted);">
-      Reset
-    </a>
-    {% endif %}
+    <button type="button" class="btn-saas btn-secondary-saas" id="btn-reset-supplier" style="color: var(--text-muted);">
+      <i class="ph ph-arrow-counter-clockwise"></i> Reset
+    </button>
+
+    <!-- Real-time Live API Badge -->
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 6px;">
+      <span class="badge-status" id="api-status-badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); font-size: 11px; padding: 4px 10px;">
+        <i class="ph ph-database" style="margin-right: 4px;"></i> API: <code style="font-family: var(--font-mono); font-size: 11px;">/api/suppliers/</code>
+      </span>
+    </div>
   </form>
 </div>
 
-<!-- Supplier Data Table -->
+<!-- Error Alert State (Hidden by default) -->
+<div id="suppliers-error" style="display: none; margin-bottom: 20px; padding: 16px 20px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-md); color: #fca5a5; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <i class="ph ph-warning-circle" style="font-size: 22px; color: #ef4444;"></i>
+    <span id="suppliers-error-message">Unable to reach <code>/api/suppliers/</code>. Displaying cached records.</span>
+  </div>
+  <button type="button" class="btn-saas btn-secondary-saas btn-sm-saas" id="btn-retry-api" style="color: #fff; border-color: rgba(239, 68, 68, 0.4);">
+    <i class="ph ph-arrow-clockwise"></i> Retry
+  </button>
+</div>
+
+<!-- Supplier Data Table Card -->
 <div class="card-saas">
+  <!-- Table Header Bar -->
+  <div class="card-header-clean" style="margin-bottom: 16px;">
+    <div class="card-title-clean">
+      <i class="ph ph-table" style="color: var(--primary);"></i>
+      <span>Supplier Records</span>
+      <span id="suppliers-count-badge" style="font-size: 12px; font-weight: 700; background: rgba(255, 255, 255, 0.08); color: var(--text-muted); padding: 2px 8px; border-radius: var(--radius-full); margin-left: 6px;">
+        {{ total_count|default:"0" }} total
+      </span>
+    </div>
+    <div id="table-loading-indicator" style="display: none; align-items: center; gap: 8px; font-size: 12px; color: var(--primary);">
+      <i class="ph ph-spinner ph-spin" style="font-size: 16px;"></i>
+      <span>Syncing with API...</span>
+    </div>
+  </div>
+
   <div class="table-responsive-saas">
     <table class="table-saas" id="suppliers-table">
       <thead>
         <tr>
           <th>Supplier ID</th>
-          <th>Name / Organization</th>
-          <th>Category</th>
+          <th>Supplier Name</th>
+          <th>Supplier Code</th>
           <th>Contact Person</th>
+          <th>Email</th>
+          <th>Category</th>
           <th>Status</th>
           <th>Quality Score</th>
           <th>Grade</th>
-          <th style="text-align: right;">Action</th>
+          <th style="text-align: right;">Actions</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="suppliers-table-body">
         {% for supplier in page_obj %}
-        <tr>
+        <tr data-supplier-id="{{ supplier.pk }}">
           <td>
             <a href="{% url 'supplier-detail' supplier.pk %}" style="font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: #818cf8; text-decoration: none;">
               {{ supplier.supplier_id }}
@@ -81,12 +173,20 @@
             <a href="{% url 'supplier-detail' supplier.pk %}" style="color: #fff; font-weight: 700; text-decoration: none;">
               {{ supplier.name }}
             </a>
-            <div style="font-size: 11px; color: var(--text-subtle);">Code: {{ supplier.code }}</div>
           </td>
-          <td>{{ supplier.category }}</td>
           <td>
-            <div>{{ supplier.contact_person }}</div>
-            <div style="font-size: 11px; color: var(--text-muted);">{{ supplier.email }}</div>
+            <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); background: rgba(255, 255, 255, 0.04); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-subtle);">
+              {{ supplier.code }}
+            </span>
+          </td>
+          <td>{{ supplier.contact_person }}</td>
+          <td>
+            <a href="mailto:{{ supplier.email }}" style="color: var(--text-muted); text-decoration: none; font-size: 13px; display: inline-flex; align-items: center; gap: 4px;">
+              <i class="ph ph-envelope-simple" style="font-size: 14px;"></i> {{ supplier.email }}
+            </a>
+          </td>
+          <td>
+            <span style="font-size: 12px; color: var(--text-main);">{{ supplier.category }}</span>
           </td>
           <td>
             <span class="badge-status {% if supplier.status == 'Active' %}badge-status-active{% elif supplier.status == 'Under Review' %}badge-status-under-review{% else %}badge-status-rejected{% endif %}">
@@ -94,7 +194,7 @@
             </span>
           </td>
           <td>
-            <span style="font-family: var(--font-mono); font-weight: 800; font-size: 15px; color: #fff;">
+            <span style="font-family: var(--font-mono); font-weight: 800; font-size: 14px; color: #fff;">
               {{ supplier.overall_quality_score }}%
             </span>
           </td>
@@ -102,15 +202,22 @@
             <span class="grade-pill grade-{{ supplier.grade|slugify }}">{{ supplier.grade }}</span>
           </td>
           <td style="text-align: right;">
-            <a href="{% url 'supplier-detail' supplier.pk %}" class="btn-saas btn-secondary-saas btn-sm-saas">
-              View Profile <i class="ph ph-arrow-right"></i>
-            </a>
+            <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end;">
+              <a href="{% url 'supplier-detail' supplier.pk %}" class="btn-saas btn-secondary-saas btn-sm-saas" id="btn-view-{{ supplier.pk }}" title="View 360° Profile">
+                <i class="ph ph-eye"></i> View Details
+              </a>
+              {% if IS_QUALITY_MANAGER %}
+              <a href="{% url 'supplier-update' supplier.pk %}" class="btn-saas btn-secondary-saas btn-sm-saas" title="Edit Supplier" style="padding: 6px 8px;">
+                <i class="ph ph-pencil-simple"></i>
+              </a>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% empty %}
-        <tr>
-          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 48px;">
-            <i class="ph ph-buildings" style="font-size: 36px; display: block; margin-bottom: 12px; color: var(--text-subtle);"></i>
+        <tr id="server-empty-row">
+          <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 48px;">
+            <i class="ph ph-buildings" style="font-size: 40px; display: block; margin-bottom: 12px; color: var(--text-subtle);"></i>
             No suppliers match your search criteria.
           </td>
         </tr>
@@ -119,29 +226,272 @@
     </table>
   </div>
 
-  <!-- Pagination -->
-  {% if page_obj.has_other_pages %}
-  <div class="pagination-saas">
-    {% if page_obj.has_previous %}
-      <a href="?page={{ page_obj.previous_page_number }}&q={{ query }}&category={{ selected_category }}&status={{ selected_status }}" class="page-btn">
-        <i class="ph ph-caret-left"></i> Previous
-      </a>
-    {% endif %}
-
-    {% for num in page_obj.paginator.page_range %}
-      {% if page_obj.number == num %}
-        <span class="page-btn active">{{ num }}</span>
-      {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-        <a href="?page={{ num }}&q={{ query }}&category={{ selected_category }}&status={{ selected_status }}" class="page-btn">{{ num }}</a>
-      {% endif %}
-    {% endfor %}
-
-    {% if page_obj.has_next %}
-      <a href="?page={{ page_obj.next_page_number }}&q={{ query }}&category={{ selected_category }}&status={{ selected_status }}" class="page-btn">
-        Next <i class="ph ph-caret-right"></i>
-      </a>
-    {% endif %}
+  <!-- Empty State Container (for dynamic JS filtering) -->
+  <div id="suppliers-empty-state" style="display: none; text-align: center; padding: 56px 24px;">
+    <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+      <i class="ph ph-magnifying-glass" style="font-size: 28px; color: #818cf8;"></i>
+    </div>
+    <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px;">No Suppliers Found</h3>
+    <p style="font-size: 13px; color: var(--text-muted); max-width: 420px; margin: 0 auto 18px;">
+      No suppliers matched your search query or filter criteria. Try adjusting your filters or resetting the search.
+    </p>
+    <button type="button" class="btn-saas btn-secondary-saas" id="btn-empty-reset">
+      <i class="ph ph-arrow-counter-clockwise"></i> Clear Search & Filters
+    </button>
   </div>
-  {% endif %}
 </div>
+
+<!-- Interactive Client-side Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const isQualityManager = {{ IS_QUALITY_MANAGER|yesno:"true,false" }};
+  const tableBody = document.getElementById('suppliers-table-body');
+  const emptyState = document.getElementById('suppliers-empty-state');
+  const errorAlert = document.getElementById('suppliers-error');
+  const errorMessage = document.getElementById('suppliers-error-message');
+  const loadingIndicator = document.getElementById('table-loading-indicator');
+  const refreshBtn = document.getElementById('btn-refresh-api');
+  const refreshIcon = document.getElementById('icon-refresh');
+  const retryBtn = document.getElementById('btn-retry-api');
+  const filterForm = document.getElementById('supplier-filter-form');
+  const searchInput = document.getElementById('input-search-supplier');
+  const categorySelect = document.getElementById('select-category');
+  const statusSelect = document.getElementById('select-status');
+  const orderingSelect = document.getElementById('select-ordering');
+  const resetBtn = document.getElementById('btn-reset-supplier');
+  const emptyResetBtn = document.getElementById('btn-empty-reset');
+  const countBadge = document.getElementById('suppliers-count-badge');
+  const kpiTotal = document.getElementById('kpi-total');
+  const kpiActive = document.getElementById('kpi-active');
+  const kpiUnderReview = document.getElementById('kpi-under-review');
+  const kpiAvgScore = document.getElementById('kpi-avg-score');
+
+  let debounceTimer = null;
+
+  // Escape HTML helper
+  function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // Get badge CSS class for supplier status
+  function getStatusBadgeClass(status) {
+    if (status === 'Active') return 'badge-status-active';
+    if (status === 'Under Review') return 'badge-status-under-review';
+    return 'badge-status-rejected';
+  }
+
+  // Get grade slug for CSS pill
+  function getGradeSlug(grade) {
+    if (!grade) return 'na';
+    return grade.toLowerCase().replace(/\+/g, '-plus').replace(/[^a-z0-9-]/g, '');
+  }
+
+  // Fetch real data from /api/suppliers/
+  function fetchSuppliers() {
+    const query = searchInput.value.trim();
+    const category = categorySelect.value;
+    const status = statusSelect.value;
+    const ordering = orderingSelect.value;
+
+    // Show loading state
+    if (loadingIndicator) loadingIndicator.style.display = 'inline-flex';
+    if (refreshIcon) refreshIcon.classList.add('ph-spin');
+    if (errorAlert) errorAlert.style.display = 'none';
+
+    // Build URL query
+    const params = new URLSearchParams();
+    if (query) params.append('search', query);
+    if (category) params.append('category', category);
+    if (status) params.append('status', status);
+    if (ordering) params.append('ordering', ordering);
+    params.append('page_size', '100');
+
+    const apiUrl = '/api/suppliers/?' + params.toString();
+
+    fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(function(response) {
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status + ' (' + response.statusText + ')');
+      }
+      return response.json();
+    })
+    .then(function(data) {
+      // Hide loading
+      if (loadingIndicator) loadingIndicator.style.display = 'none';
+      if (refreshIcon) refreshIcon.classList.remove('ph-spin');
+
+      // Extract results list (handles both paginated DRF and flat lists)
+      const suppliers = Array.isArray(data) ? data : (data.results || []);
+      const totalCount = (typeof data.count === 'number') ? data.count : suppliers.length;
+
+      renderSupplierRows(suppliers, totalCount);
+      updateKPIs(suppliers);
+    })
+    .catch(function(err) {
+      if (loadingIndicator) loadingIndicator.style.display = 'none';
+      if (refreshIcon) refreshIcon.classList.remove('ph-spin');
+      if (errorAlert) {
+        errorAlert.style.display = 'flex';
+        if (errorMessage) {
+          errorMessage.innerHTML = 'Failed to load live data from <code>' + apiUrl + '</code>: ' + escapeHtml(err.message);
+        }
+      }
+      console.warn('API fetch warning:', err);
+    });
+  }
+
+  // Render supplier rows into table body
+  function renderSupplierRows(suppliers, totalCount) {
+    if (countBadge) {
+      countBadge.textContent = totalCount + ' total';
+    }
+
+    if (suppliers.length === 0) {
+      tableBody.innerHTML = '';
+      if (emptyState) emptyState.style.display = 'block';
+      return;
+    }
+
+    if (emptyState) emptyState.style.display = 'none';
+
+    let html = '';
+    suppliers.forEach(function(s) {
+      const detailUrl = '/suppliers/' + s.id + '/';
+      const editUrl = '/suppliers/' + s.id + '/edit/';
+      const statusClass = getStatusBadgeClass(s.status);
+      const gradeSlug = getGradeSlug(s.grade);
+      const score = (parseFloat(s.overall_quality_score) || 0).toFixed(2);
+
+      let editButtonHtml = '';
+      if (isQualityManager) {
+        editButtonHtml = `
+          <a href="${editUrl}" class="btn-saas btn-secondary-saas btn-sm-saas" title="Edit Supplier" style="padding: 6px 8px;">
+            <i class="ph ph-pencil-simple"></i>
+          </a>
+        `;
+      }
+
+      html += `
+        <tr data-supplier-id="${s.id}">
+          <td>
+            <a href="${detailUrl}" style="font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: #818cf8; text-decoration: none;">
+              ${escapeHtml(s.supplier_id)}
+            </a>
+          </td>
+          <td>
+            <a href="${detailUrl}" style="color: #fff; font-weight: 700; text-decoration: none;">
+              ${escapeHtml(s.name)}
+            </a>
+          </td>
+          <td>
+            <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); background: rgba(255, 255, 255, 0.04); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-subtle);">
+              ${escapeHtml(s.code)}
+            </span>
+          </td>
+          <td>${escapeHtml(s.contact_person)}</td>
+          <td>
+            <a href="mailto:${escapeHtml(s.email)}" style="color: var(--text-muted); text-decoration: none; font-size: 13px; display: inline-flex; align-items: center; gap: 4px;">
+              <i class="ph ph-envelope-simple" style="font-size: 14px;"></i> ${escapeHtml(s.email)}
+            </a>
+          </td>
+          <td>
+            <span style="font-size: 12px; color: var(--text-main);">${escapeHtml(s.category)}</span>
+          </td>
+          <td>
+            <span class="badge-status ${statusClass}">
+              ${escapeHtml(s.status)}
+            </span>
+          </td>
+          <td>
+            <span style="font-family: var(--font-mono); font-weight: 800; font-size: 14px; color: #fff;">
+              ${score}%
+            </span>
+          </td>
+          <td>
+            <span class="grade-pill grade-${gradeSlug}">${escapeHtml(s.grade || 'N/A')}</span>
+          </td>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end;">
+              <a href="${detailUrl}" class="btn-saas btn-secondary-saas btn-sm-saas" id="btn-view-${s.id}" title="View 360° Profile">
+                <i class="ph ph-eye"></i> View Details
+              </a>
+              ${editButtonHtml}
+            </div>
+          </td>
+        </tr>
+      `;
+    });
+
+    tableBody.innerHTML = html;
+  }
+
+  // Dynamically update KPI ribbon based on live dataset
+  function updateKPIs(suppliers) {
+    if (!suppliers || suppliers.length === 0) return;
+    const active = suppliers.filter(function(s) { return s.status === 'Active'; });
+    const underReview = suppliers.filter(function(s) { return s.status === 'Under Review'; });
+    
+    let totalScore = 0;
+    active.forEach(function(s) {
+      totalScore += (parseFloat(s.overall_quality_score) || 0);
+    });
+    const avgScore = active.length > 0 ? (totalScore / active.length).toFixed(2) : '0.00';
+
+    if (kpiActive && active.length > 0) kpiActive.textContent = active.length;
+    if (kpiUnderReview) kpiUnderReview.textContent = underReview.length;
+    if (kpiAvgScore && active.length > 0) kpiAvgScore.textContent = avgScore + '%';
+  }
+
+  // Live debounced search
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(fetchSuppliers, 300);
+    });
+  }
+
+  // Filter dropdown change listeners
+  if (categorySelect) categorySelect.addEventListener('change', fetchSuppliers);
+  if (statusSelect) statusSelect.addEventListener('change', fetchSuppliers);
+  if (orderingSelect) orderingSelect.addEventListener('change', fetchSuppliers);
+
+  // Form submit (prevent full reload, perform AJAX fetch)
+  if (filterForm) {
+    filterForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      fetchSuppliers();
+    });
+  }
+
+  // Reset button handlers
+  function resetFilters() {
+    if (searchInput) searchInput.value = '';
+    if (categorySelect) categorySelect.value = '';
+    if (statusSelect) statusSelect.value = '';
+    if (orderingSelect) orderingSelect.value = '-created_at';
+    fetchSuppliers();
+  }
+
+  if (resetBtn) resetBtn.addEventListener('click', resetFilters);
+  if (emptyResetBtn) emptyResetBtn.addEventListener('click', resetFilters);
+  if (refreshBtn) refreshBtn.addEventListener('click', fetchSuppliers);
+  if (retryBtn) retryBtn.addEventListener('click', fetchSuppliers);
+
+  // Optional initial fetch to hydrate live records from API
+  // Note: Server-rendered page_obj provides instant zero-delay first render
+  fetchSuppliers();
+});
+</script>
 {% endblock %}

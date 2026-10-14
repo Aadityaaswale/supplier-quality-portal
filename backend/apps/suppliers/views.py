@@ -29,12 +29,18 @@ def supplier_list_view(request):
     if status:
         suppliers = suppliers.filter(status=status)
 
-    paginator = Paginator(suppliers, 8)
+    paginator = Paginator(suppliers, 50)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     categories = [c[0] for c in Supplier.CATEGORY_CHOICES]
     statuses = [s[0] for s in Supplier.STATUS_CHOICES]
+
+    total_count = Supplier.objects.count()
+    active_count = Supplier.objects.filter(status='Active').count()
+    under_review_count = Supplier.objects.filter(status='Under Review').count()
+    from django.db.models import Avg
+    avg_score_res = Supplier.objects.filter(status='Active').aggregate(Avg('overall_quality_score'))['overall_quality_score__avg'] or 0.0
 
     context = {
         'page_obj': page_obj,
@@ -43,7 +49,10 @@ def supplier_list_view(request):
         'selected_status': status,
         'categories': categories,
         'statuses': statuses,
-        'total_count': suppliers.count(),
+        'total_count': total_count,
+        'active_count': active_count,
+        'under_review_count': under_review_count,
+        'avg_score': round(float(avg_score_res), 2),
     }
     return render(request, 'suppliers/supplier_list.html', context)
 
